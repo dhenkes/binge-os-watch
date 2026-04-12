@@ -18,7 +18,6 @@ A fast, minimal, self-hosted media tracker for movies and TV shows. Powered by [
 - Webhooks with built-in presets (Discord, Slack, ntfy) and custom templates
 - ICS calendar feed for subscribing in any calendar app
 - Trakt JSON import
-- Mediatracker SQLite migration tool
 - Multi-user support with admin panel
 - Three themes: OLED, dark, light
 - Localization: English, Deutsch, Nederlands
