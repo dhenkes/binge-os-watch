@@ -1,0 +1,124 @@
+{{template "layout" .}}
+
+{{define "title"}}{{call .T "settings.title"}} — binge-os-watch{{end}}
+
+{{define "content"}}
+<div class="page">
+    <h1 class="page-title">{{call .T "settings.title"}}</h1>
+
+    {{if eq .Msg "password_error"}}<div class="alert alert-error">Failed to change password.</div>{{end}}
+    {{if eq .Msg "password_mismatch"}}<div class="alert alert-error">Passwords do not match.</div>{{end}}
+    {{if eq .Msg "ics_error"}}<div class="alert alert-error">Failed to regenerate ICS token.</div>{{end}}
+    {{if eq .Msg "trakt_error"}}<div class="alert alert-error">Trakt import failed.</div>{{end}}
+    {{if eq .Msg "import_error"}}<div class="alert alert-error">Library import failed. Check the server logs.</div>{{end}}
+    {{if eq .Msg "import_started"}}<div class="alert" style="border: 1px solid var(--border);">Library import started in the background. It can take several minutes — refresh the homepage to see progress.</div>{{end}}
+    {{if eq .Msg "import_done"}}<div class="alert" style="border: 1px solid var(--border);">Library import complete.</div>{{end}}
+    {{if .TraktAdded}}<div class="alert" style="border: 1px solid var(--border);">Trakt import: {{.TraktAdded}} added, {{.TraktSkipped}} skipped.</div>{{end}}
+
+    <div class="dashboard-links">
+        <a href="/webhooks">Manage webhooks</a>
+    </div>
+
+    {{/* Appearance */}}
+    <div class="settings-block">
+        <h2>{{call .T "settings.appearance"}}</h2>
+        <form autocomplete="off" method="post" action="/settings">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+            <div class="settings-row">
+                <label for="theme">{{call .T "settings.theme"}}</label>
+                <select id="theme" name="theme">
+                    <option value="oled"{{if and .Settings (eq .Settings.Theme "oled")}} selected{{end}}>OLED</option>
+                    <option value="dark"{{if and .Settings (eq .Settings.Theme "dark")}} selected{{end}}>Dark</option>
+                    <option value="light"{{if and .Settings (eq .Settings.Theme "light")}} selected{{end}}>Light</option>
+                </select>
+            </div>
+            <div class="settings-row">
+                <label for="locale">{{call .T "settings.language"}}</label>
+                <select id="locale" name="locale">
+                    <option value="en"{{if and .Settings (eq .Settings.Locale "en")}} selected{{end}}>English</option>
+                    <option value="de"{{if and .Settings (eq .Settings.Locale "de")}} selected{{end}}>Deutsch</option>
+                    <option value="nl"{{if and .Settings (eq .Settings.Locale "nl")}} selected{{end}}>Nederlands</option>
+                </select>
+            </div>
+            <div class="settings-row">
+                <label for="region">{{call .T "settings.region"}}</label>
+                <input type="text" id="region" name="region" value="{{if .Settings}}{{.Settings.Region}}{{end}}" placeholder="NL" maxlength="2" style="width: 4rem;" autocomplete="off">
+                <span class="text-muted text-xs">{{call .T "settings.region_hint"}}</span>
+            </div>
+            <button type="submit" class="btn btn-primary">{{call .T "action.save"}}</button>
+        </form>
+    </div>
+
+    {{/* Change password */}}
+    <div class="settings-block">
+        <h2>{{call .T "settings.change_password"}}</h2>
+        <form autocomplete="off" method="post" action="/settings/password">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+            <div class="settings-row">
+                <label for="current_password">{{call .T "settings.current_password"}}</label>
+                <input type="password" id="current_password" name="current_password" required autocomplete="new-password">
+            </div>
+            <div class="settings-row">
+                <label for="new_password">{{call .T "settings.new_password"}}</label>
+                <input type="password" id="new_password" name="new_password" required autocomplete="new-password">
+            </div>
+            <div class="settings-row">
+                <label for="confirm_password">Confirm new password</label>
+                <input type="password" id="confirm_password" name="confirm_password" required autocomplete="new-password">
+            </div>
+            <button type="submit" class="btn btn-primary">{{call .T "action.change"}}</button>
+        </form>
+    </div>
+
+    {{/* ICS Calendar */}}
+    <div class="settings-block">
+        <h2>{{call .T "settings.ics"}}</h2>
+        <p class="text-muted text-xs" style="margin-bottom: var(--space-sm);">{{call .T "settings.ics_hint"}}</p>
+        {{if .ICSToken}}
+        <p class="text-muted text-xs" style="margin-bottom: var(--space-xs);">Copy this URL and add it as a calendar subscription in your calendar app:</p>
+        <code style="display: block; padding: var(--space-sm); background: var(--bg-input); border: 1px solid var(--border); font-size: var(--text-xs); word-break: break-all; margin-bottom: var(--space-sm);">{{.BaseURL}}/ics/{{.ICSToken}}</code>
+        {{else}}
+        <p class="text-muted" style="margin-bottom: var(--space-sm);">{{call .T "settings.ics_none"}}</p>
+        {{end}}
+        <form autocomplete="off" method="post" action="/settings/ics/regenerate">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+            <button type="submit" class="btn">{{call .T "settings.ics_regenerate"}}</button>
+        </form>
+    </div>
+
+    {{/* Trakt Import */}}
+    <div class="settings-block">
+        <h2>{{call .T "settings.trakt"}}</h2>
+        <p class="text-muted text-xs" style="margin-bottom: var(--space-sm);">{{call .T "settings.trakt_hint"}}</p>
+        <form autocomplete="off" method="post" action="/settings/trakt/import" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+            <div class="settings-row">
+                <input type="file" name="file" accept=".json" required autocomplete="off">
+            </div>
+            <button type="submit" class="btn btn-primary">Import</button>
+        </form>
+    </div>
+
+    {{/* Library export / import — TMDB-keyed JSON, safe to round-trip
+         across schema changes. Export first to keep an offline backup. */}}
+    <div class="settings-block">
+        <h2>Library export</h2>
+        <p class="text-muted text-xs" style="margin-bottom: var(--space-sm);">Download your entire library (shows, movies, progress, ratings, tags) as a JSON file.</p>
+        <a href="/settings/export" class="btn btn-primary">Download export</a>
+    </div>
+
+    <div class="settings-block">
+        <h2>Library import</h2>
+        <p class="text-muted text-xs" style="margin-bottom: var(--space-sm);">Restore a previously-downloaded library export. Existing items are skipped; missing shows/movies are fetched from TMDB. This can take a while on large libraries.</p>
+        <form autocomplete="off" method="post" action="/settings/import" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+            <div class="settings-row">
+                <input type="file" name="file" accept=".json" required autocomplete="off">
+            </div>
+            <button type="submit" class="btn btn-primary">Import</button>
+        </form>
+    </div>
+
+    <p class="text-muted text-xs" style="margin-top: var(--space-xl);">Data provided by <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer">TMDB</a></p>
+</div>
+{{end}}

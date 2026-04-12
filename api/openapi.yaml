@@ -1,0 +1,1593 @@
+openapi: "3.1.0"
+info:
+  title: binge-os-watch API
+  description: |
+    REST API for binge-os-watch (BINGE) — a fast, opinionated media tracker
+    powered by TMDB. Tracks movies and TV shows with per-episode progress,
+    ratings at every level, and keyword-based discovery.
+
+    **Authentication**: Login returns a session token and sets an HttpOnly
+    session cookie. For browser usage the cookie is used automatically.
+    For programmatic access, pass the token as `Authorization: Bearer <token>`.
+
+    **Pagination**: Uses `page_size` and `page_token` query parameters.
+    Responses include `next_page_token` (empty when no more pages).
+
+    **Partial updates**: PATCH endpoints accept `update_mask` as a
+    comma-separated list of field names to update.
+
+    **Error format**: All errors return `{"code": "ERROR_CODE", "message": "..."}`.
+
+    **Status state machine (TV shows)**:
+    - 0 episodes watched → plan_to_watch (auto)
+    - 1+ episodes, not all → watching (auto)
+    - all episodes watched → watched (auto)
+    - user sets on_hold → on_hold (manual, status_override=1)
+    - user sets dropped → dropped (manual, status_override=1)
+    - user marks episode after override → watching (auto, status_override=0)
+  version: "1.0.0"
+  license:
+    name: AGPL-3.0
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+tags:
+  - name: Auth
+    description: Registration, login, logout, current user
+  - name: Search
+    description: TMDB search
+  - name: Library
+    description: Media library CRUD and status management
+  - name: Episodes
+    description: Episode watch progress and season bulk actions
+  - name: Ratings
+    description: Rate movies, TV shows, seasons, and episodes (1-10)
+  - name: Tags
+    description: User-defined tags for organizing media
+  - name: Calendar
+    description: Release calendar — upcoming and recently released
+  - name: Discovery
+    description: Trending, popular, recommendations, and watch providers
+  - name: Keywords
+    description: Keyword watches — saved TMDB searches with suggestions
+  - name: Images
+    description: Locally cached TMDB images
+  - name: Settings
+    description: User settings (locale, theme, region)
+  - name: Health
+    description: Health check
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      operationId: healthCheck
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  # ── Auth ──────────────────────────────────────────────────────────────
+
+  /api/v1/users:register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      description: |
+        Creates a new user account. Rate limited to 5 requests/minute per IP.
+        Can be disabled via `disable_registration` in server config.
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/InvalidArgument"
+        "409":
+          $ref: "#/components/responses/AlreadyExists"
+
+  /api/v1/users:login:
+    post:
+      tags: [Auth]
+      summary: Authenticate and create a session
+      description: |
+        Returns user info with a session token and sets an HttpOnly session
+        cookie. Use the token as `Authorization: Bearer <token>` for API
+        access. Rate limited to 5 requests/minute per IP.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthRequest"
+      responses:
+        "200":
+          description: Logged in
+          headers:
+            Set-Cookie:
+              description: Session cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  /api/v1/users:logout:
+    post:
+      tags: [Auth]
+      summary: Destroy the current session
+      operationId: logout
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "204":
+          description: Logged out
+
+  /api/v1/users:change-password:
+    post:
+      tags: [Auth]
+      summary: Change the current user's password
+      operationId: changePassword
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password:
+                  type: string
+                new_password:
+                  type: string
+                  minLength: 8
+      responses:
+        "204":
+          description: Password changed
+        "400":
+          $ref: "#/components/responses/InvalidArgument"
+
+  /api/v1/users/me:
+    get:
+      tags: [Auth]
+      summary: Get the current user
+      operationId: getCurrentUser
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthenticated"
+
+  # ── Search ────────────────────────────────────────────────────────────
+
+  /api/v1/search:
+    get:
+      tags: [Search]
+      summary: Search TMDB for movies and TV shows
+      operationId: searchTMDB
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: TMDB page number (default 1)
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Search results from TMDB
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TMDBSearchResponse"
+
+  # ── Library ───────────────────────────────────────────────────────────
+
+  /api/v1/media:
+    get:
+      tags: [Library]
+      summary: List media in library
+      operationId: listMedia
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      parameters:
+        - name: status
+          in: query
+          description: Filter by watch status
+          schema:
+            type: string
+            enum: [plan_to_watch, watching, watched, on_hold, dropped]
+        - name: type
+          in: query
+          description: Filter by media type
+          schema:
+            type: string
+            enum: [movie, tv]
+        - name: tag
+          in: query
+          description: Filter by tag ID
+          schema:
+            type: string
+        - name: q
+          in: query
+          description: Search within library by title
+          schema:
+            type: string
+        - name: sort
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            enum: [title, created_at, release_date, rating]
+            default: created_at
+        - $ref: "#/components/parameters/pageSize"
+        - $ref: "#/components/parameters/pageToken"
+      responses:
+        "200":
+          description: Paginated media list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MediaPage"
+    post:
+      tags: [Library]
+      summary: Add a TMDB item to library
+      description: |
+        Fetches full details from TMDB (movie or TV show with seasons and
+        episodes) and adds to the user's library as "plan_to_watch".
+      operationId: addMedia
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tmdb_id, media_type]
+              properties:
+                tmdb_id:
+                  type: integer
+                  description: TMDB ID of the movie or TV show
+                media_type:
+                  type: string
+                  enum: [movie, tv]
+      responses:
+        "201":
+          description: Media added to library
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Media"
+        "400":
+          $ref: "#/components/responses/InvalidArgument"
+        "409":
+          $ref: "#/components/responses/AlreadyExists"
+
+  /api/v1/media/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Library]
+      summary: Get media details
+      operationId: getMedia
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "200":
+          description: Media details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Media"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Library]
+      summary: Remove media from library
+      description: Deletes the media and all associated seasons, episodes, watch progress, and ratings (cascade).
+      operationId: removeMedia
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "204":
+          description: Media removed
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/media/{id}:set-status:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    post:
+      tags: [Library]
+      summary: Set media watch status
+      description: |
+        Explicitly sets the watch status. Setting on_hold or dropped enables
+        manual override. Marking an episode later clears the override and
+        resumes auto-derivation.
+      operationId: setMediaStatus
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [plan_to_watch, watching, watched, on_hold, dropped]
+      responses:
+        "204":
+          description: Status updated
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/media/{id}:watch-next:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    post:
+      tags: [Episodes]
+      summary: Mark the next unwatched episode as watched
+      description: |
+        Finds the next unwatched episode (ordered by season then episode
+        number), marks it watched, and returns it. Also updates the media
+        status via auto-derivation.
+      operationId: watchNextEpisode
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "200":
+          description: The episode that was marked watched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Episode"
+        "404":
+          description: No unwatched episodes remaining
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppError"
+
+  /api/v1/media/{id}:rate:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    post:
+      tags: [Ratings]
+      summary: Rate a movie or TV show
+      operationId: rateMedia
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RateRequest"
+      responses:
+        "204":
+          description: Rating saved
+        "400":
+          $ref: "#/components/responses/InvalidArgument"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/media/{id}/tags:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    post:
+      tags: [Tags]
+      summary: Add a tag to media
+      operationId: addTagToMedia
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tag_id]
+              properties:
+                tag_id:
+                  type: string
+      responses:
+        "204":
+          description: Tag added
+
+  /api/v1/media/{id}/tags/{tagId}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+      - name: tagId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [Tags]
+      summary: Remove a tag from media
+      operationId: removeTagFromMedia
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "204":
+          description: Tag removed
+
+  # ── Episodes & Seasons ────────────────────────────────────────────────
+
+  /api/v1/episodes/{id}:watch:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    post:
+      tags: [Episodes]
+      summary: Mark an episode as watched
+      description: |
+        Records watch progress and auto-derives the parent TV show's status.
+        Clears any manual status override (on_hold/dropped).
+      operationId: watchEpisode
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "204":
+          description: Episode marked watched
+
+  /api/v1/episodes/{id}:unwatch:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    post:
+      tags: [Episodes]
+      summary: Mark an episode as unwatched
+      operationId: unwatchEpisode
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "204":
+          description: Episode marked unwatched
+
+  /api/v1/episodes/{id}:rate:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    post:
+      tags: [Ratings]
+      summary: Rate an episode
+      operationId: rateEpisode
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RateRequest"
+      responses:
+        "204":
+          description: Rating saved
+        "400":
+          $ref: "#/components/responses/InvalidArgument"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/seasons/{id}:watch-all:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    post:
+      tags: [Episodes]
+      summary: Mark all episodes in a season as watched
+      operationId: watchAllInSeason
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "204":
+          description: All episodes in season marked watched
+
+  /api/v1/seasons/{id}:rate:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    post:
+      tags: [Ratings]
+      summary: Rate a season
+      operationId: rateSeason
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RateRequest"
+      responses:
+        "204":
+          description: Rating saved
+        "400":
+          $ref: "#/components/responses/InvalidArgument"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Ratings ───────────────────────────────────────────────────────────
+
+  /api/v1/ratings/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    delete:
+      tags: [Ratings]
+      summary: Delete a rating (legacy, no-op)
+      description: |
+        Under the Option B schema, deleting a rating is expressed as a score=0
+        on the corresponding `:rate` endpoint; the dedicated delete route is
+        kept for legacy clients and is a server-side no-op that always returns 204.
+      operationId: deleteRating
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "204":
+          description: No content (always, even if no rating existed)
+
+  # ── Tags ──────────────────────────────────────────────────────────────
+
+  /api/v1/tags:
+    get:
+      tags: [Tags]
+      summary: List all tags
+      operationId: listTags
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "200":
+          description: List of tags
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Tag"
+    post:
+      tags: [Tags]
+      summary: Create a tag
+      operationId: createTag
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  maxLength: 50
+      responses:
+        "201":
+          description: Tag created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+        "400":
+          $ref: "#/components/responses/InvalidArgument"
+        "409":
+          $ref: "#/components/responses/AlreadyExists"
+
+  /api/v1/tags/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    delete:
+      tags: [Tags]
+      summary: Delete a tag
+      description: Removes the tag from all media (junction rows cascade-delete).
+      operationId: deleteTag
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "204":
+          description: Tag deleted
+
+  # ── Calendar ──────────────────────────────────────────────────────────
+
+  /api/v1/calendar:
+    get:
+      tags: [Calendar]
+      summary: Release calendar feed
+      description: |
+        Returns upcoming or recently released items from the user's library.
+        Use `section=upcoming` (default) for future releases, or
+        `section=recent` for unwatched items aired in the last 30 days.
+      operationId: getCalendar
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      parameters:
+        - name: section
+          in: query
+          description: Calendar section
+          schema:
+            type: string
+            enum: [upcoming, recent]
+            default: upcoming
+        - name: range
+          in: query
+          description: Date range for upcoming section
+          schema:
+            type: string
+            enum: [7d, 30d, 90d, all]
+            default: all
+        - name: type
+          in: query
+          description: Filter by media type
+          schema:
+            type: string
+            enum: [movie, tv]
+        - name: status
+          in: query
+          description: Filter by media status
+          schema:
+            type: string
+            enum: [watching, plan_to_watch]
+      responses:
+        "200":
+          description: Calendar entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CalendarEntry"
+
+  # ── Discovery ────────────────────────────────────────────────────────
+
+  /api/v1/discover/trending:
+    get:
+      tags: [Discovery]
+      summary: Trending movies and TV shows
+      description: Returns TMDB trending content for the week. Cached for 6 hours.
+      operationId: getTrending
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "200":
+          description: Trending movies and TV
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrendingResult"
+
+  /api/v1/discover/popular:
+    get:
+      tags: [Discovery]
+      summary: Popular movies or TV shows
+      operationId: getPopular
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      parameters:
+        - name: type
+          in: query
+          description: Media type (default movie)
+          schema:
+            type: string
+            enum: [movie, tv]
+            default: movie
+        - name: page
+          in: query
+          description: TMDB page number
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Popular items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PopularResult"
+
+  /api/v1/discover/recommendations:
+    get:
+      tags: [Discovery]
+      summary: Personalized recommendations
+      description: |
+        Aggregated from the user's top 10 highest-rated items. Fetches TMDB
+        recommendations for each, deduplicates, excludes library items, and
+        ranks by frequency. Cached for 24 hours per user.
+      operationId: getRecommendations
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "200":
+          description: Recommendation list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecommendationItem"
+
+  /api/v1/media/{id}/providers:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Discovery]
+      summary: Where to watch
+      description: |
+        Returns streaming, rent, and buy providers for a media item in
+        the user's configured region. Data from TMDB/JustWatch.
+      operationId: getWatchProviders
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "200":
+          description: Watch provider info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WatchProviderResult"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/media/{id}/recommendations:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    get:
+      tags: [Discovery]
+      summary: Recommendations for a specific media item
+      operationId: getMediaRecommendations
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "200":
+          description: TMDB recommendations for this item
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecommendationItem"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Keyword Watches ───────────────────────────────────────────────────
+
+  /api/v1/keyword-watches:
+    get:
+      tags: [Keywords]
+      summary: List keyword watches
+      operationId: listKeywordWatches
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "200":
+          description: List of keyword watches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/KeywordWatch"
+    post:
+      tags: [Keywords]
+      summary: Create a keyword watch
+      operationId: createKeywordWatch
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [keyword]
+              properties:
+                keyword:
+                  type: string
+                media_types:
+                  type: string
+                  description: "Comma-separated: movie, tv, or movie,tv (default)"
+                  default: "movie,tv"
+      responses:
+        "201":
+          description: Keyword watch created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KeywordWatch"
+        "400":
+          $ref: "#/components/responses/InvalidArgument"
+        "409":
+          $ref: "#/components/responses/AlreadyExists"
+
+  /api/v1/keyword-watches/{id}:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    patch:
+      tags: [Keywords]
+      summary: Update a keyword watch
+      operationId: updateKeywordWatch
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      parameters:
+        - $ref: "#/components/parameters/updateMask"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                keyword:
+                  type: string
+                media_types:
+                  type: string
+      responses:
+        "204":
+          description: Keyword watch updated
+    delete:
+      tags: [Keywords]
+      summary: Delete a keyword watch and all its results
+      operationId: deleteKeywordWatch
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "204":
+          description: Keyword watch deleted
+
+  /api/v1/keyword-watches/suggestions:
+    get:
+      tags: [Keywords]
+      summary: List all pending keyword suggestions
+      operationId: listKeywordSuggestions
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "200":
+          description: Pending keyword results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/KeywordResult"
+
+  /api/v1/keyword-watches/count:
+    get:
+      tags: [Keywords]
+      summary: Get pending suggestion count (for nav badge)
+      operationId: pendingKeywordCount
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "200":
+          description: Pending count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+
+  /api/v1/keyword-watches/{id}:dismiss-all:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    post:
+      tags: [Keywords]
+      summary: Dismiss all pending results for a keyword watch
+      operationId: dismissAllKeywordResults
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "204":
+          description: All results dismissed
+
+  /api/v1/keyword-results/{id}:add:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    post:
+      tags: [Keywords]
+      summary: Add a suggestion to library
+      operationId: addKeywordResult
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "204":
+          description: Result marked as added
+
+  /api/v1/keyword-results/{id}:dismiss:
+    parameters:
+      - $ref: "#/components/parameters/id"
+    post:
+      tags: [Keywords]
+      summary: Dismiss a suggestion (never resurfaces)
+      operationId: dismissKeywordResult
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "204":
+          description: Result dismissed
+
+  # ── Images ───────────────────────────────────────────────────────────
+
+  /api/v1/images/{path}:
+    parameters:
+      - name: path
+        in: path
+        required: true
+        schema:
+          type: string
+        description: "TMDB image path, e.g. w342/abc123.jpg"
+    get:
+      tags: [Images]
+      summary: Serve a cached TMDB image
+      description: |
+        Cache-aside pattern: checks local cache, fetches from TMDB CDN
+        on miss, stores in DB, then serves. Subsequent requests hit cache.
+        Image sizes: w92 (thumbnail), w342 (poster), w780 (backdrop/large poster).
+      operationId: getImage
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "200":
+          description: Image data
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Settings ──────────────────────────────────────────────────────────
+
+  /api/v1/settings:
+    get:
+      tags: [Settings]
+      summary: Get user settings
+      operationId: getSettings
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "200":
+          description: User settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSettings"
+    patch:
+      tags: [Settings]
+      summary: Update user settings
+      operationId: updateSettings
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      parameters:
+        - $ref: "#/components/parameters/updateMask"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserSettings"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSettings"
+        "400":
+          $ref: "#/components/responses/InvalidArgument"
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+      description: |
+        HttpOnly session cookie set by the login endpoint.
+        SameSite=Strict, Secure configurable.
+        30-day sliding expiry (extended on activity).
+    bearerToken:
+      type: http
+      scheme: bearer
+      description: |
+        Session token returned by the login endpoint. Pass as
+        `Authorization: Bearer <token>`. Uses the same session
+        as the cookie — no separate API key table.
+
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      description: |
+        Under the Option B schema this is the `user_library.id` of the user's
+        library entry, not the TMDB id. The catalog (`tmdb_show` / `tmdb_movie`)
+        is shared; user-scoped state lives on `user_library`.
+      schema:
+        type: string
+        format: uuid
+    pageSize:
+      name: page_size
+      in: query
+      description: Number of items per page (default 20, max 100)
+      schema:
+        type: integer
+        default: 20
+        maximum: 100
+    pageToken:
+      name: page_token
+      in: query
+      description: Opaque token for the next page
+      schema:
+        type: string
+    updateMask:
+      name: update_mask
+      in: query
+      required: true
+      description: Comma-separated list of fields to update
+      schema:
+        type: string
+      example: locale,theme,region
+
+  schemas:
+    AuthRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 50
+        password:
+          type: string
+          minLength: 8
+
+    LoginResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        role:
+          type: string
+        token:
+          type: string
+          description: Session token for Bearer auth
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        role:
+          type: string
+          enum: [user, admin]
+        created_at:
+          type: string
+          format: date-time
+
+    UserSettings:
+      type: object
+      properties:
+        user_id:
+          type: string
+        locale:
+          type: string
+          enum: [en, de, nl]
+        theme:
+          type: string
+          enum: [light, dark, oled]
+        region:
+          type: string
+          description: ISO 3166-1 2-letter code for watch provider lookups
+          example: NL
+        updated_at:
+          type: string
+          format: date-time
+
+    Media:
+      type: object
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        tmdb_id:
+          type: integer
+        media_type:
+          type: string
+          enum: [movie, tv]
+        title:
+          type: string
+        overview:
+          type: string
+        poster_path:
+          type: string
+        backdrop_path:
+          type: string
+        release_date:
+          type: string
+          description: YYYY-MM-DD
+        runtime_minutes:
+          type: integer
+          description: Movie runtime in minutes (0 for TV shows — use episode runtimes)
+        genres:
+          type: string
+          description: Comma-separated genre names from TMDB
+        status:
+          type: string
+          enum: [plan_to_watch, watching, watched, on_hold, dropped]
+        status_override:
+          type: boolean
+          description: True when status was manually set (on_hold/dropped)
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Season:
+      type: object
+      properties:
+        id:
+          type: string
+        media_id:
+          type: string
+        tmdb_season_id:
+          type: integer
+        season_number:
+          type: integer
+        name:
+          type: string
+        overview:
+          type: string
+        poster_path:
+          type: string
+        air_date:
+          type: string
+        episode_count:
+          type: integer
+        watched_count:
+          type: integer
+          description: Computed — number of watched episodes in this season
+        user_rating:
+          type: integer
+          nullable: true
+          description: User's 1-10 rating for this season
+
+    Episode:
+      type: object
+      properties:
+        id:
+          type: string
+        season_id:
+          type: string
+        tmdb_episode_id:
+          type: integer
+        episode_number:
+          type: integer
+        name:
+          type: string
+        overview:
+          type: string
+        still_path:
+          type: string
+        air_date:
+          type: string
+        runtime_minutes:
+          type: integer
+        watched:
+          type: boolean
+          description: Computed — whether the current user has watched this episode
+        user_rating:
+          type: integer
+          nullable: true
+          description: User's 1-10 rating for this episode
+
+    Rating:
+      type: object
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        item_type:
+          type: string
+          enum: [movie, tv, season, episode]
+        item_id:
+          type: string
+        score:
+          type: integer
+          minimum: 1
+          maximum: 10
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    RateRequest:
+      type: object
+      required: [score]
+      properties:
+        score:
+          type: integer
+          minimum: 1
+          maximum: 10
+
+    Tag:
+      type: object
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    TMDBSearchResult:
+      type: object
+      properties:
+        id:
+          type: integer
+        media_type:
+          type: string
+          enum: [movie, tv]
+        title:
+          type: string
+        name:
+          type: string
+        overview:
+          type: string
+        poster_path:
+          type: string
+        backdrop_path:
+          type: string
+        release_date:
+          type: string
+        first_air_date:
+          type: string
+        vote_average:
+          type: number
+        vote_count:
+          type: integer
+
+    TMDBSearchResponse:
+      type: object
+      properties:
+        page:
+          type: integer
+        total_pages:
+          type: integer
+        total_results:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/TMDBSearchResult"
+
+    MediaPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Media"
+        next_page_token:
+          type: string
+        total_size:
+          type: integer
+
+    KeywordWatch:
+      type: object
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        keyword:
+          type: string
+        media_types:
+          type: string
+          description: "Comma-separated: movie, tv, or movie,tv"
+        created_at:
+          type: string
+          format: date-time
+
+    KeywordResult:
+      type: object
+      properties:
+        id:
+          type: string
+        keyword_watch_id:
+          type: string
+        tmdb_id:
+          type: integer
+        media_type:
+          type: string
+          enum: [movie, tv]
+        title:
+          type: string
+        poster_path:
+          type: string
+        release_date:
+          type: string
+        status:
+          type: string
+          enum: [pending, added, dismissed]
+        created_at:
+          type: string
+          format: date-time
+
+    CalendarEntry:
+      type: object
+      properties:
+        media_id:
+          type: string
+        media_title:
+          type: string
+        media_type:
+          type: string
+          enum: [movie, tv]
+        poster_path:
+          type: string
+        release_date:
+          type: string
+          description: YYYY-MM-DD
+        episode_info:
+          type: string
+          description: "S02E05 - Episode Title (TV only)"
+        episode_id:
+          type: string
+        watched:
+          type: boolean
+
+    TrendingResult:
+      type: object
+      properties:
+        movies:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiscoverItem"
+        tv:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiscoverItem"
+
+    PopularResult:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiscoverItem"
+        page:
+          type: integer
+        total_pages:
+          type: integer
+
+    DiscoverItem:
+      type: object
+      properties:
+        tmdb_id:
+          type: integer
+        media_type:
+          type: string
+          enum: [movie, tv]
+        title:
+          type: string
+        overview:
+          type: string
+        poster_path:
+          type: string
+        release_date:
+          type: string
+        vote_average:
+          type: number
+        in_library:
+          type: boolean
+
+    RecommendationItem:
+      type: object
+      properties:
+        tmdb_id:
+          type: integer
+        media_type:
+          type: string
+          enum: [movie, tv]
+        title:
+          type: string
+        overview:
+          type: string
+        poster_path:
+          type: string
+        release_date:
+          type: string
+        vote_average:
+          type: number
+        count:
+          type: integer
+          description: Number of favorites that recommend this item
+        in_library:
+          type: boolean
+
+    WatchProviderResult:
+      type: object
+      properties:
+        stream:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProviderInfo"
+        rent:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProviderInfo"
+        buy:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProviderInfo"
+        link:
+          type: string
+          description: JustWatch attribution URL (required by TMDB)
+
+    ProviderInfo:
+      type: object
+      properties:
+        provider_id:
+          type: integer
+        provider_name:
+          type: string
+        logo_path:
+          type: string
+
+    AppError:
+      type: object
+      properties:
+        code:
+          type: string
+          enum:
+            - INVALID_ARGUMENT
+            - NOT_FOUND
+            - ALREADY_EXISTS
+            - UNAUTHENTICATED
+            - PERMISSION_DENIED
+            - INTERNAL
+        message:
+          type: string
+        details:
+          nullable: true
+
+  responses:
+    InvalidArgument:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AppError"
+          example:
+            code: INVALID_ARGUMENT
+            message: "title: must not be empty"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AppError"
+          example:
+            code: NOT_FOUND
+            message: media not found
+    AlreadyExists:
+      description: Resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AppError"
+          example:
+            code: ALREADY_EXISTS
+            message: item already in library
+    Unauthenticated:
+      description: Not authenticated
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AppError"
+          example:
+            code: UNAUTHENTICATED
+            message: authentication required
+    PermissionDenied:
+      description: Forbidden — admin access required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AppError"
+          example:
+            code: PERMISSION_DENIED
+            message: admin access required

@@ -1,0 +1,31 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="en" data-theme="{{or .Theme "oled"}}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="same-origin">
+    {{if .AutoRefresh}}<meta http-equiv="refresh" content="3">{{end}}
+    <title>{{block "title" .}}binge-os-watch{{end}}</title>
+    <style>{{.InlineCSS}}</style>
+</head>
+<body>
+    {{if .Page}}
+    <nav class="nav">
+        <a href="/" class="{{if eq .Page "library"}}active{{end}}">{{call .T "nav.library"}}</a>
+        <a href="/watched" class="{{if eq .Page "watched"}}active{{end}}">Watched</a>
+        <a href="/calendar" class="{{if eq .Page "calendar"}}active{{end}}">{{call .T "nav.calendar"}}</a>
+        <a href="/discover" class="nav-desktop {{if eq .Page "discover"}}active{{end}}">{{call .T "nav.discover"}}</a>
+        <a href="/suggestions" class="nav-desktop {{if eq .Page "suggestions"}}active{{end}}">{{call .T "nav.suggestions"}}</a>
+        <a href="/tags" class="nav-desktop {{if eq .Page "tags"}}active{{end}}">Tags</a>
+        <a href="/search" class="{{if eq .Page "search"}}active{{end}}">{{call .T "nav.search"}}</a>
+        <a href="/settings" class="nav-desktop {{if eq .Page "settings"}}active{{end}}">{{call .T "nav.settings"}}</a>
+        {{if .IsAdmin}}<a href="/admin" class="nav-desktop {{if eq .Page "admin"}}active{{end}}">{{call .T "nav.admin"}}</a>{{end}}
+        <a href="/logout" class="nav-desktop {{if eq .Page "logout"}}active{{end}}">{{call .T "nav.logout"}}</a>
+        <a href="/menu" class="nav-mobile {{if or (eq .Page "menu") (eq .Page "discover") (eq .Page "suggestions") (eq .Page "tags") (eq .Page "settings") (eq .Page "admin") (eq .Page "webhooks") (eq .Page "logout")}}active{{end}}">Menu</a>
+    </nav>
+    {{end}}
+    {{block "content" .}}{{end}}
+</body>
+</html>
+{{end}}

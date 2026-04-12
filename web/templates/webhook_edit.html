@@ -1,0 +1,54 @@
+{{template "layout" .}}
+
+{{define "title"}}Edit webhook — binge-os-watch{{end}}
+
+{{define "content"}}
+<div class="page">
+    <div class="item-meta" style="margin-bottom: var(--space-md);">
+        <a href="/webhooks/{{.Webhook.ID}}">&larr; Back to webhook</a>
+    </div>
+
+    <h1 class="page-title">Edit webhook</h1>
+
+    {{if eq .Msg "webhook_error"}}<div class="alert alert-error">Invalid webhook URL. Must be a valid http or https URL.</div>{{end}}
+
+    <form autocomplete="off" method="post" action="/webhooks/{{.Webhook.ID}}/update">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+        <div class="settings-row">
+            <label>Name</label>
+            <input type="text" name="name" value="{{.Webhook.Name}}" required autocomplete="off">
+        </div>
+        <div class="settings-row">
+            <label>Service</label>
+            <select name="service">
+                <option value="generic"{{if eq .Webhook.Service "generic"}} selected{{end}}>Generic JSON</option>
+                <option value="discord"{{if eq .Webhook.Service "discord"}} selected{{end}}>Discord</option>
+                <option value="slack"{{if eq .Webhook.Service "slack"}} selected{{end}}>Slack</option>
+                <option value="ntfy"{{if eq .Webhook.Service "ntfy"}} selected{{end}}>ntfy</option>
+                <option value="custom"{{if eq .Webhook.Service "custom"}} selected{{end}}>Custom (template)</option>
+            </select>
+        </div>
+        <div class="settings-row">
+            <label>URL</label>
+            <input type="url" name="url" value="{{.Webhook.URL}}" required autocomplete="off">
+        </div>
+        <div class="settings-row">
+            <label>Events</label>
+            <label style="display: block; font-size: var(--text-xs); margin-bottom: var(--space-xs);"><input type="checkbox" name="events" value="added"{{if .HasAdded}} checked{{end}} style="width: auto; margin-right: var(--space-xs);" autocomplete="off"> Added to library</label>
+            <label style="display: block; font-size: var(--text-xs); margin-bottom: var(--space-xs);"><input type="checkbox" name="events" value="status_changed"{{if .HasStatusChanged}} checked{{end}} style="width: auto; margin-right: var(--space-xs);" autocomplete="off"> Status changed</label>
+            <label style="display: block; font-size: var(--text-xs); margin-bottom: var(--space-xs);"><input type="checkbox" name="events" value="watched"{{if .HasWatched}} checked{{end}} style="width: auto; margin-right: var(--space-xs);" autocomplete="off"> Marked as watched</label>
+            <label style="display: block; font-size: var(--text-xs); margin-bottom: var(--space-xs);"><input type="checkbox" name="events" value="episode_watched"{{if .HasEpisodeWatched}} checked{{end}} style="width: auto; margin-right: var(--space-xs);" autocomplete="off"> Episode watched</label>
+            <label style="display: block; font-size: var(--text-xs); margin-bottom: var(--space-xs);"><input type="checkbox" name="events" value="released"{{if .HasReleased}} checked{{end}} style="width: auto; margin-right: var(--space-xs);" autocomplete="off"> Released (from upcoming)</label>
+        </div>
+        <div class="settings-row">
+            <label>Body template <span class="text-muted text-xs">(custom only — variables: {{`{{.Title}} {{.Status}} {{.MediaType}} {{.MediaID}} {{.Event}}`}})</span></label>
+            <textarea name="body_template" rows="3" autocomplete="off">{{.Webhook.BodyTemplate}}</textarea>
+        </div>
+        <div class="settings-row">
+            <label>Custom headers <span class="text-muted text-xs">(JSON object, custom only)</span></label>
+            <input type="text" name="headers" value="{{.Webhook.Headers}}" autocomplete="off">
+        </div>
+        <button type="submit" class="btn btn-primary">Save</button>
+    </form>
+</div>
+{{end}}

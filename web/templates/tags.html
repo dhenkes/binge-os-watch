@@ -1,0 +1,36 @@
+{{template "layout" .}}
+
+{{define "title"}}Tags — binge-os-watch{{end}}
+
+{{define "content"}}
+<div class="page">
+    <h1 class="page-title">Tags <span class="count">({{len .AllTags}})</span></h1>
+
+    <div class="create-form">
+        <form autocomplete="off" method="post" action="/tags/new" style="display: flex; gap: var(--space-sm);">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+            <input type="text" name="name" placeholder="New tag name" required style="width: auto; flex: 1; max-width: 20rem;" autocomplete="off">
+            <button type="submit" class="btn">Create</button>
+        </form>
+    </div>
+
+    {{if .AllTags}}
+    <ul class="item-list">
+        {{range .AllTags}}
+        <li class="item item-row">
+            <a href="/?view=all&tag={{.ID}}">{{.Name}}</a>
+            <details class="inline-confirm">
+                <summary>delete</summary>
+                <form autocomplete="off" method="post" action="/tags/{{.ID}}/delete">
+                    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
+                    <button type="submit" class="confirm-delete">confirm?</button>
+                </form>
+            </details>
+        </li>
+        {{end}}
+    </ul>
+    {{else}}
+    <div class="empty-state">No tags yet.</div>
+    {{end}}
+</div>
+{{end}}

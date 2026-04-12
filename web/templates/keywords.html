@@ -1,0 +1,65 @@
+{{template "layout" .}}
+
+{{define "title"}}{{call .T "keywords.title"}} — binge-os-watch{{end}}
+
+{{define "content"}}
+<div class="page">
+    <div class="settings-page">
+        <h1 class="page-title">{{call .T "keywords.title"}}</h1>
+
+        <div class="dashboard-links">
+            <a href="/suggestions">{{call .T "keywords.suggestions"}}</a>
+        </div>
+
+        <form autocomplete="off" method="post" action="/keywords/new" class="create-form">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+            <input type="text" name="keyword" placeholder="Keyword" required autocomplete="off">
+            <select name="media_types" style="width: auto;">
+                <option value="movie,tv">Movies &amp; TV</option>
+                <option value="movie">Movies</option>
+                <option value="tv">TV Shows</option>
+            </select>
+            <button type="submit" class="btn">{{call .T "action.create"}}</button>
+        </form>
+
+        {{if .Watches}}
+        <ul class="item-list">
+            {{range .Watches}}
+            <li class="item">
+                <div class="item-row">
+                    <div>
+                        <strong>{{.Keyword}}</strong>
+                        <span class="text-xs text-muted">({{.MediaTypes}})</span>
+                    </div>
+                    <div style="display: flex; gap: var(--space-sm); align-items: baseline;">
+                        <details class="inline-confirm">
+                            <summary>{{call $.T "action.edit"}}</summary>
+                            <form autocomplete="off" method="post" action="/keywords/{{.ID}}/update" style="display: flex; gap: var(--space-xs); margin-top: var(--space-xs);">
+                                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
+                                <input type="text" name="keyword" value="{{.Keyword}}" style="width: 10rem; font-size: var(--text-xs);" autocomplete="off">
+                                <select name="media_types" style="width: auto; font-size: var(--text-xs);">
+                                    <option value="movie,tv"{{if eq .MediaTypes "movie,tv"}} selected{{end}}>Both</option>
+                                    <option value="movie"{{if eq .MediaTypes "movie"}} selected{{end}}>Movie</option>
+                                    <option value="tv"{{if eq .MediaTypes "tv"}} selected{{end}}>TV</option>
+                                </select>
+                                <button type="submit" class="btn" style="font-size: var(--text-xs);">{{call $.T "action.save"}}</button>
+                            </form>
+                        </details>
+                        <details class="inline-confirm">
+                            <summary>{{call $.T "action.delete"}}</summary>
+                            <form autocomplete="off" method="post" action="/keywords/{{.ID}}/delete">
+                                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
+                                <button type="submit" class="confirm-delete">{{call $.T "action.confirm"}}</button>
+                            </form>
+                        </details>
+                    </div>
+                </div>
+            </li>
+            {{end}}
+        </ul>
+        {{else}}
+        <div class="empty-state">{{call .T "keywords.empty"}}</div>
+        {{end}}
+    </div>
+</div>
+{{end}}

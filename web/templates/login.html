@@ -1,0 +1,45 @@
+{{template "layout" .}}
+
+{{define "title"}}{{if eq .Mode "register"}}{{call .T "auth.register"}}{{else}}{{call .T "auth.login"}}{{end}} — binge-os-watch{{end}}
+
+{{define "content"}}
+<div class="auth-page">
+    <div class="auth-card">
+        <h1 class="auth-title">binge-os-watch</h1>
+        <p class="auth-subtitle">{{if eq .Mode "register"}}{{call .T "auth.create_account"}}{{else}}{{call .T "auth.signin"}}{{end}}</p>
+
+        {{if .Error}}
+        <div class="alert alert-error">{{.Error}}</div>
+        {{end}}
+
+        <form autocomplete="off" method="post" action="{{if eq .Mode "register"}}/register{{else}}/login{{end}}">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+            <div class="form-group">
+                <label for="username">{{call .T "auth.username"}}</label>
+                <input type="text" id="username" name="username" required autofocus value="{{.Username}}" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label for="password">{{call .T "auth.password"}}</label>
+                <input type="password" id="password" name="password" required autocomplete="new-password">
+            </div>
+            {{if eq .Mode "register"}}
+            <div class="form-group">
+                <label for="password_confirm">Confirm password</label>
+                <input type="password" id="password_confirm" name="password_confirm" required autocomplete="new-password">
+            </div>
+            {{end}}
+            <button type="submit" class="btn btn-primary btn-block">{{if eq .Mode "register"}}{{call .T "auth.register"}}{{else}}{{call .T "auth.login"}}{{end}}</button>
+        </form>
+
+        {{if eq .Mode "register"}}
+        <p class="auth-toggle">
+            {{call .T "auth.have_account"}} <a href="/login">{{call .T "auth.login_link"}}</a>
+        </p>
+        {{else if .RegistrationOpen}}
+        <p class="auth-toggle">
+            {{call .T "auth.first_time"}} <a href="/register">{{call .T "auth.create_link"}}</a>
+        </p>
+        {{end}}
+    </div>
+</div>
+{{end}}

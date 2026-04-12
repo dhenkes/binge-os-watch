@@ -1,0 +1,17 @@
+{{template "layout" .}}
+
+{{define "title"}}{{call .T "logout.title"}} — binge-os-watch{{end}}
+
+{{define "content"}}
+<div class="page">
+    <div class="settings-page">
+        <h1 class="page-title">{{call .T "logout.title"}}</h1>
+        <p>{{call .T "logout.confirm"}}</p>
+        <form autocomplete="off" method="post" action="/logout" style="margin-top: var(--space-md);">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+            <button type="submit" class="btn btn-primary">{{call .T "logout.yes"}}</button>
+            <a href="/" class="btn" style="margin-left: var(--space-sm);">{{call .T "action.cancel"}}</a>
+        </form>
+    </div>
+</div>
+{{end}}

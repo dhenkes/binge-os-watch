@@ -1,0 +1,83 @@
+{{template "layout" .}}
+
+{{define "title"}}{{.Episode.Name}} — binge-os-watch{{end}}
+
+{{define "content"}}
+<div class="page">
+    <div class="item-meta" style="margin-bottom: var(--space-md);">
+        <a href="/media/{{.MediaID}}">{{.MediaTitle}}</a>
+        <span class="sep">&rsaquo;</span>
+        <span>S{{.SeasonNumber}}E{{.Episode.EpisodeNumber}}</span>
+    </div>
+
+    <h1 class="page-title">{{.Episode.Name}}</h1>
+
+    {{if .Episode.AirDate}}
+    <p class="text-muted text-xs" style="margin-bottom: var(--space-md);">{{fmtDate .Episode.AirDate}}{{if .Episode.RuntimeMinutes}} · {{formatDuration .Episode.RuntimeMinutes}}{{end}}</p>
+    {{end}}
+
+    {{/* Watch status */}}
+    <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-md);">
+        {{if .Episode.Watched}}
+        <form autocomplete="off" method="post" action="/episodes/{{.Episode.ID}}/unwatch" class="inline-action">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+            <input type="hidden" name="return_to" value="/episodes/{{.Episode.ID}}" autocomplete="off">
+            <button type="submit" class="btn"><span style="color: var(--success);">&#10003;</span> Watched</button>
+        </form>
+        {{else}}
+        <form autocomplete="off" method="post" action="/episodes/{{.Episode.ID}}/watch" class="inline-action">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+            <input type="hidden" name="return_to" value="/episodes/{{.Episode.ID}}" autocomplete="off">
+            <button type="submit" class="btn">Mark watched</button>
+        </form>
+        {{end}}
+    </div>
+
+    {{/* Watched date */}}
+    <div style="margin-bottom: var(--space-md);">
+        <form autocomplete="off" method="post" action="/episodes/{{.Episode.ID}}/watched-at" style="display: flex; gap: var(--space-sm); align-items: center;">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+            <label class="text-xs text-muted">Watched on:</label>
+            <input type="date" name="watched_at" value="{{fmtDateInput .Episode.WatchedAt}}" style="width: auto;" autocomplete="off">
+            <button type="submit" class="btn" style="font-size: var(--text-xs);">Save</button>
+        </form>
+    </div>
+
+    {{/* Rating */}}
+    <div style="margin-bottom: var(--space-md);">
+        {{call .T "media.rate"}}:
+        {{$epID := .Episode.ID}}
+        {{$csrf := .CSRFToken}}
+        {{$currentScore := 0}}
+        {{if .Episode.UserRating}}{{$currentScore = derefInt .Episode.UserRating}}{{end}}
+        {{range seq 10}}
+        <form autocomplete="off" method="post" action="/episodes/{{$epID}}/rate" class="star-form">
+            <input type="hidden" name="csrf_token" value="{{$csrf}}" autocomplete="off">
+            <input type="hidden" name="score" value="{{.}}" autocomplete="off">
+            <input type="hidden" name="return_to" value="/episodes/{{$epID}}" autocomplete="off">
+            <button type="submit" class="star-btn{{if le . $currentScore}} filled{{end}}">&#9733;</button>
+        </form>
+        {{end}}
+    </div>
+
+    {{/* Overview */}}
+    {{if .Episode.Overview}}
+    <p class="text-muted" style="margin-bottom: var(--space-md);">{{.Episode.Overview}}</p>
+    {{end}}
+
+    {{/* Notes */}}
+    <div style="margin-bottom: var(--space-md);">
+        <h2 class="section-title">Notes</h2>
+        <form autocomplete="off" method="post" action="/episodes/{{.Episode.ID}}/notes">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+            <textarea name="notes" rows="3" placeholder="Write notes about this episode..." style="margin-bottom: var(--space-sm);" autocomplete="off">{{.Episode.Notes}}</textarea>
+            <button type="submit" class="btn">Save notes</button>
+        </form>
+    </div>
+
+    {{/* Still image */}}
+    {{if .Episode.StillPath}}
+    <img src="{{imgURL "w342" .Episode.StillPath}}" alt="{{.Episode.Name}}" style="max-width: 100%; border-radius: 0.25rem;" loading="lazy">
+    {{end}}
+</div>
+{{end}}

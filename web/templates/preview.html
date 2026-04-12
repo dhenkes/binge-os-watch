@@ -1,0 +1,121 @@
+{{template "layout" .}}
+
+{{define "title"}}{{.Title}} — binge-os-watch{{end}}
+
+{{define "content"}}
+<div class="page">
+    <div class="item-meta" style="margin-bottom: var(--space-md);">
+        <a href="/search{{if .Query}}?q={{.Query}}{{end}}">&larr; Back to search</a>
+    </div>
+
+    {{/* Hero: same layout as media_detail.html so a preview looks like a
+         detail page — only the affordances differ. */}}
+    <div style="display: flex; gap: var(--space-md); flex-wrap: wrap;">
+        {{if .PosterPath}}
+        <img src="{{imgURL "w342" .PosterPath}}" alt="{{.Title}}" style="width: 200px; border-radius: 0.25rem;" loading="lazy">
+        {{end}}
+        <div style="flex: 1; min-width: 16rem;">
+            <h1 class="page-title">{{.Title}} <span class="text-muted">({{year .ReleaseDate}})</span></h1>
+
+            {{if .Genres}}<p class="text-muted text-xs" style="margin-bottom: var(--space-sm);">{{.Genres}}</p>{{end}}
+            {{if .Runtime}}<p class="text-muted text-xs" style="margin-bottom: var(--space-sm);">{{formatDuration .Runtime}}</p>{{end}}
+            {{if .VoteAverage}}<p class="text-muted text-xs" style="margin-bottom: var(--space-sm);">TMDB: {{fmtRating .VoteAverage}}/10</p>{{end}}
+
+            {{if .Overview}}
+            <p class="text-muted" style="margin-top: var(--space-sm); margin-bottom: var(--space-md);">{{.Overview}}</p>
+            {{end}}
+
+            {{/* Primary CTA — either "Add to library" (not yet in library)
+                 or "View in library" (already in library). Mirrors the
+                 status-change block's position on media_detail.html. */}}
+            <div style="margin-top: var(--space-md);">
+            {{if .InLibrary}}
+                <a href="/media/{{.MediaID}}" class="btn btn-primary">View in library</a>
+            {{else}}
+                <form autocomplete="off" method="post" action="/search/add-and-view">
+                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+                    <input type="hidden" name="tmdb_id" value="{{.TMDBID}}" autocomplete="off">
+                    <input type="hidden" name="media_type" value="{{.MediaType}}" autocomplete="off">
+                    <input type="hidden" name="stub_title" value="{{.Title}}" autocomplete="off">
+                    <input type="hidden" name="stub_overview" value="{{.Overview}}" autocomplete="off">
+                    <input type="hidden" name="stub_poster" value="{{.PosterPath}}" autocomplete="off">
+                    <input type="hidden" name="stub_release_date" value="{{.ReleaseDate}}" autocomplete="off">
+                    <button type="submit" class="btn btn-primary">{{call .T "media.add_to_lib"}}</button>
+                </form>
+            {{end}}
+            </div>
+        </div>
+    </div>
+
+    {{/* Watch Providers — same block as media_detail.html. */}}
+    {{if .Providers}}
+    <div style="margin-top: var(--space-xl);">
+        <h2 class="section-title">{{call .T "media.where_to_watch"}}</h2>
+        {{if or .Providers.Stream .Providers.Rent .Providers.Buy}}
+        {{if .Providers.Stream}}
+        <div style="margin-bottom: var(--space-sm);">
+            <span class="text-muted text-xs">Stream:</span>
+            {{range .Providers.Stream}}
+            <span class="tag">{{.ProviderName}}</span>
+            {{end}}
+        </div>
+        {{end}}
+        {{if .Providers.Rent}}
+        <div style="margin-bottom: var(--space-sm);">
+            <span class="text-muted text-xs">Rent:</span>
+            {{range .Providers.Rent}}
+            <span class="tag">{{.ProviderName}}</span>
+            {{end}}
+        </div>
+        {{end}}
+        {{if .Providers.Buy}}
+        <div style="margin-bottom: var(--space-sm);">
+            <span class="text-muted text-xs">Buy:</span>
+            {{range .Providers.Buy}}
+            <span class="tag">{{.ProviderName}}</span>
+            {{end}}
+        </div>
+        {{end}}
+        {{if .Providers.Link}}
+        <a href="{{.Providers.Link}}" target="_blank" rel="noopener noreferrer" class="text-muted text-xs">JustWatch</a>
+        {{end}}
+        {{else}}
+        <p class="text-muted text-xs">No streaming data available for your region.</p>
+        {{end}}
+    </div>
+    {{end}}
+
+    {{/* Seasons & Episodes (TV only) — read-only mirror of the block on
+         media_detail.html. No watch/rate controls because the show isn't
+         in the user's library yet. */}}
+    {{if and (eq .MediaType "tv") .PreviewSeasons}}
+    <div style="margin-top: var(--space-xl);">
+        <h2 class="section-title">Seasons</h2>
+        {{range .PreviewSeasons}}
+        <details style="margin-bottom: var(--space-sm); border: 1px solid var(--border); border-radius: 0.25rem;">
+            <summary style="padding: var(--space-sm); cursor: pointer; display: flex; align-items: center; gap: var(--space-sm);">
+                <strong>{{.Name}}</strong>
+                <span class="text-muted text-xs">{{.EpisodeCount}} episodes{{if .AirDate}} · {{.AirDate}}{{end}}</span>
+            </summary>
+            <div style="padding: var(--space-sm);">
+                {{if .Episodes}}
+                <ul class="item-list">
+                    {{range .Episodes}}
+                    <li class="item" style="display: flex; align-items: baseline; gap: var(--space-sm); flex-wrap: wrap;">
+                        <span style="min-width: 2rem;" class="text-xs text-muted">E{{.EpisodeNumber}}</span>
+                        <span style="flex: 1;">{{.Name}}</span>
+                        {{if .AirDate}}<span class="text-xs text-muted">{{.AirDate}}</span>{{end}}
+                        {{if .RuntimeMinutes}}<span class="text-xs text-muted">{{.RuntimeMinutes}}m</span>{{end}}
+                    </li>
+                    {{end}}
+                </ul>
+                {{else}}
+                <p class="text-muted text-xs">No episodes available.</p>
+                {{end}}
+            </div>
+        </details>
+        {{end}}
+    </div>
+    {{end}}
+</div>
+{{end}}

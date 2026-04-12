@@ -1,0 +1,19 @@
+{{template "layout" .}}
+
+{{define "title"}}Menu — binge-os-watch{{end}}
+
+{{define "content"}}
+<div class="page">
+    <h1 class="page-title">Menu</h1>
+
+    <ul class="item-list">
+        <li class="item"><a href="/suggestions">{{call .T "nav.suggestions"}}</a></li>
+        <li class="item"><a href="/tags">Tags</a></li>
+        <li class="item"><a href="/search">{{call .T "nav.search"}}</a></li>
+        <li class="item"><a href="/webhooks">Webhooks</a></li>
+        <li class="item"><a href="/settings">{{call .T "nav.settings"}}</a></li>
+        {{if .IsAdmin}}<li class="item"><a href="/admin">{{call .T "nav.admin"}}</a></li>{{end}}
+        <li class="item"><a href="/logout">{{call .T "nav.logout"}}</a></li>
+    </ul>
+</div>
+{{end}}

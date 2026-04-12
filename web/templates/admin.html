@@ -1,0 +1,143 @@
+{{template "layout" .}}
+
+{{define "title"}}{{call .T "nav.admin"}} — binge-os-watch{{end}}
+
+{{define "content"}}
+<div class="page">
+    <h1 class="page-title">{{call .T "nav.admin"}}</h1>
+
+    <div class="dashboard-links">
+        <a href="/admin?tab=users"{{if eq .Tab "users"}} class="active"{{end}}>{{call .T "admin.users_title"}}</a>
+        <span class="sep">|</span>
+        <a href="/admin?tab=stats"{{if eq .Tab "stats"}} class="active"{{end}}>{{call .T "admin.stats_title"}}</a>
+        <span class="sep">|</span>
+        <a href="/admin?tab=tmdb_jobs"{{if eq .Tab "tmdb_jobs"}} class="active"{{end}}>TMDB jobs</a>
+    </div>
+
+    {{if eq .Tab "tmdb_jobs"}}
+
+    <p class="text-muted text-xs" style="margin-bottom: var(--space-md);">
+        Pending: <strong>{{.TMDBJobsPending}}</strong> ·
+        Running: <strong>{{.TMDBJobsRunning}}</strong> ·
+        Failed: <strong>{{.TMDBJobsFailed}}</strong>
+    </p>
+
+    {{if .TMDBJobs}}
+    <ul class="item-list">
+        {{range .TMDBJobs}}
+        <li class="item">
+            <div class="item-row">
+                <div>
+                    <strong>{{.Kind}}</strong>
+                    <span class="count">({{.Status}})</span>
+                </div>
+                <div style="display: flex; gap: var(--space-sm); align-items: baseline;">
+                    <form autocomplete="off" method="post" action="/admin/tmdb-jobs/retry" class="inline-action">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
+                        <input type="hidden" name="job_id" value="{{.ID}}" autocomplete="off">
+                        <button type="submit" class="inline-btn">retry</button>
+                    </form>
+                    <details class="inline-confirm">
+                        <summary>{{call $.T "action.delete"}}</summary>
+                        <form autocomplete="off" method="post" action="/admin/tmdb-jobs/delete">
+                            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
+                            <input type="hidden" name="job_id" value="{{.ID}}" autocomplete="off">
+                            <button type="submit" class="confirm-delete">{{call $.T "action.confirm"}}</button>
+                        </form>
+                    </details>
+                </div>
+            </div>
+            <div class="item-meta">
+                <code class="text-xs">{{.Payload}}</code>
+                {{if .Error}}
+                <div class="text-xs" style="color: var(--error-text); margin-top: var(--space-xs);">{{.Error}}</div>
+                {{end}}
+                <div class="text-xs" style="margin-top: var(--space-xs);">Created {{fmtDate .CreatedAt}}{{if .StartedAt}} · Started {{fmtDate .StartedAt}}{{end}}</div>
+            </div>
+        </li>
+        {{end}}
+    </ul>
+    {{else}}
+    <div class="empty-state">No TMDB jobs in the queue.</div>
+    {{end}}
+
+    {{else if eq .Tab "stats"}}
+
+    <div class="dashboard-section">
+        <h2 class="section-title">Totals</h2>
+        <ul class="item-list">
+            <li class="item item-row"><span>Users</span> <span class="count">{{.AdminStats.TotalUsers}}</span></li>
+            <li class="item item-row"><span>{{call .T "stats.total_movies"}}</span> <span class="count">{{.GlobalStats.TotalMovies}}</span></li>
+            <li class="item item-row"><span>{{call .T "stats.total_episodes"}}</span> <span class="count">{{.GlobalStats.TotalEpisodes}}</span></li>
+            <li class="item item-row"><span>{{call .T "stats.total_time"}}</span> <span class="count">{{formatDuration .GlobalStats.TotalTimeMinutes}}</span></li>
+            <li class="item item-row"><span>{{call .T "stats.avg_rating"}}</span> <span class="count">{{fmtRating .GlobalStats.AvgRating}}</span></li>
+        </ul>
+    </div>
+
+    <div class="dashboard-section">
+        <h2 class="section-title">Active Users</h2>
+        <ul class="item-list">
+            <li class="item item-row"><span>Today</span> <span class="count">{{.AdminStats.ActiveUsersDay}}</span></li>
+            <li class="item item-row"><span>This week</span> <span class="count">{{.AdminStats.ActiveUsersWeek}}</span></li>
+            <li class="item item-row"><span>This month</span> <span class="count">{{.AdminStats.ActiveUsersMonth}}</span></li>
+        </ul>
+    </div>
+
+    <div class="dashboard-section">
+        <h2 class="section-title">New Media Added</h2>
+        <ul class="item-list">
+            <li class="item item-row"><span>Today</span> <span class="count">{{.AdminStats.NewMediaDay}}</span></li>
+            <li class="item item-row"><span>This week</span> <span class="count">{{.AdminStats.NewMediaWeek}}</span></li>
+            <li class="item item-row"><span>This month</span> <span class="count">{{.AdminStats.NewMediaMonth}}</span></li>
+        </ul>
+    </div>
+
+    {{else}}
+
+    <div class="sort-bar">
+        Filter:
+        <a href="/admin?tab=users"{{if not .Filter}} class="active"{{end}}>All</a>
+        <a href="/admin?tab=users&filter=user"{{if eq .Filter "user"}} class="active"{{end}}>User</a>
+        <a href="/admin?tab=users&filter=admin"{{if eq .Filter "admin"}} class="active"{{end}}>Admin</a>
+    </div>
+
+    {{if .Users}}
+    <ul class="item-list">
+        {{range .Users}}
+        <li class="item">
+            <div class="item-row">
+                <div><strong>{{.Username}}</strong> <span class="count">({{.Role}})</span></div>
+            </div>
+            <div class="item-meta">
+                <span>Joined {{.CreatedAt.Format "Jan 2, 2006"}}</span>
+                {{with index $.LastActive .ID}}<span class="sep">|</span><span>Last active {{fmtDate .}}</span>{{end}}
+                {{if ne .ID $.CurrentUserID}}
+                <span class="sep">|</span>
+                <form autocomplete="off" method="post" action="/admin/role" class="inline-action">
+                    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
+                    <input type="hidden" name="user_id" value="{{.ID}}" autocomplete="off">
+                    <input type="hidden" name="role" value="{{if eq .Role "admin"}}user{{else}}admin{{end}}" autocomplete="off">
+                    <details class="inline-confirm">
+                        <summary>{{if eq .Role "admin"}}demote{{else}}promote{{end}}</summary>
+                        <button type="submit" class="inline-btn">{{call $.T "action.confirm"}}</button>
+                    </details>
+                </form>
+                <span class="sep">|</span>
+                <details class="inline-confirm">
+                    <summary>{{call $.T "action.delete"}}</summary>
+                    <form autocomplete="off" method="post" action="/admin/delete">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
+                        <input type="hidden" name="user_id" value="{{.ID}}" autocomplete="off">
+                        <button type="submit" class="confirm-delete">{{call $.T "action.confirm"}}</button>
+                    </form>
+                </details>
+                {{end}}
+            </div>
+        </li>
+        {{end}}
+    </ul>
+    {{end}}
+
+    {{end}}
+</div>
+{{end}}

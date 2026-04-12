@@ -1,0 +1,139 @@
+{{template "layout" .}}
+
+{{define "title"}}{{call .T "discover.title"}} — binge-os-watch{{end}}
+
+{{define "content"}}
+<div class="page">
+    <h1 class="page-title">{{call .T "discover.title"}}</h1>
+
+    <div class="filter-bar">
+        <a href="/discover?tab=trending"{{if eq .Tab "trending"}} class="active"{{end}}>{{call .T "discover.trending"}}</a>
+        <a href="/discover?tab=popular"{{if eq .Tab "popular"}} class="active"{{end}}>{{call .T "discover.popular"}}</a>
+        <a href="/discover?tab=recommendations"{{if eq .Tab "recommendations"}} class="active"{{end}}>{{call .T "discover.recommendations"}}</a>
+    </div>
+
+    {{if eq .Tab "trending"}}
+        <div class="filter-bar">
+            <a href="/discover?tab=trending&type=movie"{{if eq .TrendingType "movie"}} class="active"{{end}}>{{call .T "media.movie"}}</a>
+            <a href="/discover?tab=trending&type=tv"{{if eq .TrendingType "tv"}} class="active"{{end}}>{{call .T "media.tv"}}</a>
+        </div>
+        {{if .TrendingItems}}
+        <div class="card-grid">
+            {{range .TrendingItems}}
+            {{template "discoverCard" (list $ .)}}
+            {{end}}
+        </div>
+        {{end}}
+
+    {{else if eq .Tab "popular"}}
+        <div class="filter-bar">
+            <a href="/discover?tab=popular&type=movie"{{if eq (print .PopularType) "movie"}} class="active"{{end}}>{{call .T "media.movie"}}</a>
+            <a href="/discover?tab=popular&type=tv"{{if eq (print .PopularType) "tv"}} class="active"{{end}}>{{call .T "media.tv"}}</a>
+        </div>
+        {{if .Popular}}
+        <div class="card-grid">
+            {{range .Popular.Items}}
+            {{template "discoverCard" (list $ .)}}
+            {{end}}
+        </div>
+        {{if gt .Popular.TotalPages 1}}
+        <div class="load-more" style="display: flex; gap: var(--space-sm);">
+            {{if gt .PopularPage 1}}
+            <a href="/discover?tab=popular&type={{.PopularType}}&page={{add .PopularPage -1}}" class="btn">Prev</a>
+            {{end}}
+            <span class="text-muted">Page {{.PopularPage}} / {{.Popular.TotalPages}}</span>
+            {{if lt .PopularPage .Popular.TotalPages}}
+            <a href="/discover?tab=popular&type={{.PopularType}}&page={{add .PopularPage 1}}" class="btn">Next</a>
+            {{end}}
+        </div>
+        {{end}}
+        {{end}}
+
+    {{else if eq .Tab "recommendations"}}
+        {{if .NextRecommendation}}
+        {{with .NextRecommendation}}
+        <div style="display: flex; gap: var(--space-md); flex-wrap: wrap;">
+            {{if .PosterPath}}
+            <a href="/preview?tmdb_id={{.TMDBID}}&type={{.MediaType}}">
+                <img src="{{imgURL "w342" .PosterPath}}" alt="{{.Title}}" style="width: 200px; border-radius: 0.25rem;" loading="lazy">
+            </a>
+            {{end}}
+            <div style="flex: 1; min-width: 16rem;">
+                <h2 class="page-title"><a href="/preview?tmdb_id={{.TMDBID}}&type={{.MediaType}}">{{.Title}}</a> <span class="text-muted">({{year .ReleaseDate}})</span></h2>
+                <p class="text-muted text-xs" style="margin-bottom: var(--space-sm);">Recommended {{.Count}}x · {{.MediaType}}</p>
+                {{if .Overview}}<p class="text-muted" style="margin-bottom: var(--space-md);">{{.Overview}}</p>{{end}}
+
+                <div style="display: flex; gap: var(--space-sm);">
+                    <form autocomplete="off" method="post" action="/discover/add">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
+                        <input type="hidden" name="tmdb_id" value="{{.TMDBID}}" autocomplete="off">
+                        <input type="hidden" name="media_type" value="{{.MediaType}}" autocomplete="off">
+                        <input type="hidden" name="stub_title" value="{{.Title}}" autocomplete="off">
+                        <input type="hidden" name="stub_overview" value="{{.Overview}}" autocomplete="off">
+                        <input type="hidden" name="stub_poster" value="{{.PosterPath}}" autocomplete="off">
+                        <input type="hidden" name="stub_release_date" value="{{.ReleaseDate}}" autocomplete="off">
+                        <input type="hidden" name="return_to" value="/discover?tab=recommendations" autocomplete="off">
+                        <button type="submit" class="btn btn-primary">{{call $.T "media.add_to_lib"}}</button>
+                    </form>
+                    <form autocomplete="off" method="post" action="/discover/dismiss">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
+                        <input type="hidden" name="tmdb_id" value="{{.TMDBID}}" autocomplete="off">
+                        <input type="hidden" name="media_type" value="{{.MediaType}}" autocomplete="off">
+                        <button type="submit" class="btn">Not interested</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <p class="text-muted text-xs" style="margin-top: var(--space-md);">{{$.RemainingCount}} more recommendations</p>
+        {{end}}
+        {{else}}
+        <div class="empty-state">No more recommendations. Rate more items to get new ones.</div>
+        {{end}}
+    {{end}}
+</div>
+{{end}}
+
+{{define "discoverCard"}}
+{{$root := index . 0}}
+{{$item := index . 1}}
+<div class="card">
+    {{if $item.InLibrary}}
+    <a href="/media/{{$item.MediaID}}">
+    {{if $item.PosterPath}}
+    <img class="card-poster" src="{{imgURL "w342" $item.PosterPath}}" alt="{{$item.Title}}" loading="lazy">
+    {{else}}
+    <div class="card-poster"></div>
+    {{end}}
+    </a>
+    <div class="card-body">
+        <a href="/media/{{$item.MediaID}}" class="card-title">{{$item.Title}}</a>
+        <div class="card-meta">{{year $item.ReleaseDate}} · <span class="text-muted">{{call $root.T "media.in_library"}}</span></div>
+    </div>
+    {{else}}
+    <a href="/preview?tmdb_id={{$item.TMDBID}}&type={{$item.MediaType}}">
+    {{if $item.PosterPath}}
+    <img class="card-poster" src="{{imgURL "w342" $item.PosterPath}}" alt="{{$item.Title}}" loading="lazy">
+    {{else}}
+    <div class="card-poster"></div>
+    {{end}}
+    </a>
+    <div class="card-body">
+        <a href="/preview?tmdb_id={{$item.TMDBID}}&type={{$item.MediaType}}" class="card-title">{{$item.Title}}</a>
+        <div class="card-meta">{{year $item.ReleaseDate}}</div>
+    </div>
+    <div class="card-actions">
+        <form autocomplete="off" method="post" action="/discover/add">
+            <input type="hidden" name="csrf_token" value="{{$root.CSRFToken}}" autocomplete="off">
+            <input type="hidden" name="tmdb_id" value="{{$item.TMDBID}}" autocomplete="off">
+            <input type="hidden" name="media_type" value="{{$item.MediaType}}" autocomplete="off">
+            <input type="hidden" name="stub_title" value="{{$item.Title}}" autocomplete="off">
+            <input type="hidden" name="stub_overview" value="{{$item.Overview}}" autocomplete="off">
+            <input type="hidden" name="stub_poster" value="{{$item.PosterPath}}" autocomplete="off">
+            <input type="hidden" name="stub_release_date" value="{{$item.ReleaseDate}}" autocomplete="off">
+            <input type="hidden" name="return_to" value="/discover?tab={{$root.Tab}}&type={{$root.TrendingType}}" autocomplete="off">
+            <button type="submit" class="btn" style="font-size: var(--text-xs); width: 100%;">{{call $root.T "media.add_to_lib"}}</button>
+        </form>
+    </div>
+    {{end}}
+</div>
+{{end}}

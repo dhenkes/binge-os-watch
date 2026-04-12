@@ -1,0 +1,177 @@
+{{template "layout" .}}
+
+{{define "title"}}{{call .T "library.title"}} — binge-os-watch{{end}}
+
+{{define "content"}}
+{{if eq .View "all"}}
+<div class="page">
+    <h1 class="page-title">{{call .T "library.title"}} <span class="count">({{.TotalSize}})</span></h1>
+
+    <div class="dashboard-links">
+        <a href="/">Dashboard</a>
+        <span class="sep">|</span>
+        <a href="/search">{{call .T "nav.search"}}</a>
+    </div>
+
+    <div class="filter-bar">
+        <a href="/?view=all"{{if not .Filter.Status}} class="active"{{end}}>{{call .T "library.all"}}</a>
+        <a href="/?view=all&status=plan_to_watch"{{if eq (print .Filter.Status) "plan_to_watch"}} class="active"{{end}}>{{call .T "media.plan_to_watch"}}</a>
+        <a href="/?view=all&status=watching"{{if eq (print .Filter.Status) "watching"}} class="active"{{end}}>{{call .T "media.watching"}}</a>
+        <a href="/?view=all&status=watched"{{if eq (print .Filter.Status) "watched"}} class="active"{{end}}>{{call .T "media.watched"}}</a>
+        <a href="/?view=all&status=on_hold"{{if eq (print .Filter.Status) "on_hold"}} class="active"{{end}}>{{call .T "media.on_hold"}}</a>
+        <a href="/?view=all&status=dropped"{{if eq (print .Filter.Status) "dropped"}} class="active"{{end}}>{{call .T "media.dropped"}}</a>
+    </div>
+
+    <div class="filter-bar">
+        <a href="/?view=all&status={{.Filter.Status}}"{{if not .Filter.MediaType}} class="active"{{end}}>{{call .T "library.all"}}</a>
+        <a href="/?view=all&status={{.Filter.Status}}&type=movie"{{if eq (print .Filter.MediaType) "movie"}} class="active"{{end}}>{{call .T "media.movie"}}</a>
+        <a href="/?view=all&status={{.Filter.Status}}&type=tv"{{if eq (print .Filter.MediaType) "tv"}} class="active"{{end}}>{{call .T "media.tv"}}</a>
+    </div>
+
+    {{$base := print "/?view=all&status=" (print .Filter.Status) "&type=" (print .Filter.MediaType)}}
+    {{$dir := .Filter.SortDir}}
+    {{/* Title defaults to asc; everything else defaults to desc. Show the
+         toggle label based on the effective (post-default) direction. */}}
+    {{$effective := $dir}}
+    {{if eq $effective ""}}
+        {{if eq .Filter.SortBy "title"}}{{$effective = "asc"}}{{else}}{{$effective = "desc"}}{{end}}
+    {{end}}
+    {{$toggled := "asc"}}{{if eq $effective "asc"}}{{$toggled = "desc"}}{{end}}
+    <div class="sort-bar">
+        {{call .T "library.sort"}}:
+        <a href="{{$base}}&sort=created_at"{{if or (eq .Filter.SortBy "created_at") (eq .Filter.SortBy "")}} class="active"{{end}}>{{call .T "library.sort_added"}}</a>
+        <a href="{{$base}}&sort=title"{{if eq .Filter.SortBy "title"}} class="active"{{end}}>{{call .T "library.sort_title"}}</a>
+        <a href="{{$base}}&sort=release_date"{{if eq .Filter.SortBy "release_date"}} class="active"{{end}}>{{call .T "library.sort_release"}}</a>
+        <a href="{{$base}}&sort=unwatched"{{if eq .Filter.SortBy "unwatched"}} class="active"{{end}}>Unwatched episodes</a>
+        <span class="sep">|</span>
+        <a href="{{$base}}&sort={{.Filter.SortBy}}&dir={{$toggled}}">{{if eq $effective "asc"}}&uarr; asc{{else}}&darr; desc{{end}}</a>
+    </div>
+
+    {{if .Items}}
+    <div class="card-grid">
+        {{range .Items}}
+        <div class="card">
+            <a href="/media/{{.ID}}">
+                {{if .PosterPath}}
+                <img class="card-poster" src="{{imgURL "w342" .PosterPath}}" alt="{{.Title}}" loading="lazy">
+                {{else}}
+                <div class="card-poster"></div>
+                {{end}}
+            </a>
+            <div class="card-body">
+                <a href="/media/{{.ID}}" class="card-title">{{.Title}}</a>
+                <div class="card-meta">
+                    {{if .Refreshing}}
+                    <span class="badge badge-refreshing" title="Fetching full details from TMDB…">refreshing…</span>
+                    {{else}}
+                    <span class="badge {{statusBadge .Status}}">{{call $.T (statusLabel .Status)}}</span>
+                    {{end}}
+                    {{year .ReleaseDate}}
+                    {{if and (eq $.Filter.SortBy "unwatched") (eq (print .MediaType) "tv")}}
+                    <span class="text-xs text-muted">· {{.UnwatchedCount}} unwatched</span>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+        {{end}}
+    </div>
+
+    {{if .NextPageToken}}
+    <div class="load-more">
+        <a href="/?view=all&status={{.Filter.Status}}&type={{.Filter.MediaType}}&sort={{.Filter.SortBy}}&dir={{.Filter.SortDir}}&page_token={{.NextPageToken}}" class="btn">{{call .T "discover.load_more"}}</a>
+    </div>
+    {{end}}
+
+    {{else}}
+    <div class="empty-state">{{call .T "library.empty"}}</div>
+    {{end}}
+</div>
+
+{{else}}
+<div class="page">
+    <h1 class="page-title">{{call .T "library.title"}} <span class="count">({{.TotalSize}})</span></h1>
+
+    <div class="dashboard-links">
+        <a href="/?view=all">View all</a>
+        <span class="sep">|</span>
+        <a href="/search">{{call .T "nav.search"}}</a>
+    </div>
+
+    {{if .Watching}}
+    <div class="dashboard-section">
+        <h2 class="section-title">Continue Watching</h2>
+        <ul class="item-list">
+            {{range .Watching}}
+            <li class="item" style="display: flex; align-items: center; gap: var(--space-sm);">
+                {{if .PosterPath}}<a href="/media/{{.ID}}"><img src="{{imgURL "w92" .PosterPath}}" alt="" style="width: 40px; border-radius: 0.125rem;" loading="lazy"></a>{{end}}
+                <div style="flex: 1; min-width: 0;">
+                    <div class="item-row">
+                        <a href="/media/{{.ID}}" style="font-weight: 600;">{{.Title}}</a>
+                        <span class="text-muted text-xs">{{year .ReleaseDate}}</span>
+                    </div>
+                    <div class="item-meta"><span class="badge badge-watching">{{call $.T "media.watching"}}</span></div>
+                </div>
+            </li>
+            {{end}}
+        </ul>
+    </div>
+    {{end}}
+
+    {{if .Unrated}}
+    <div class="dashboard-section">
+        <h2 class="section-title">Rate what you watched</h2>
+        <ul class="item-list">
+            {{range .Unrated}}
+            <li class="item" style="display: flex; align-items: center; gap: var(--space-sm);">
+                {{if .PosterPath}}<a href="/media/{{.ID}}"><img src="{{imgURL "w92" .PosterPath}}" alt="" style="width: 40px; border-radius: 0.125rem;" loading="lazy"></a>{{end}}
+                <div style="flex: 1; min-width: 0;">
+                    <div class="item-row">
+                        <a href="/media/{{.ID}}" style="font-weight: 600;">{{.Title}}</a>
+                        <span class="text-muted text-xs">{{year .ReleaseDate}}</span>
+                    </div>
+                    <div class="item-meta"><span class="text-muted text-xs">no rating</span></div>
+                </div>
+            </li>
+            {{end}}
+        </ul>
+    </div>
+    {{end}}
+
+    {{if .Upcoming}}
+    <div class="dashboard-section">
+        <h2 class="section-title">{{call .T "calendar.upcoming"}}</h2>
+        <ul class="item-list">
+            {{range .Upcoming}}
+            <li class="item" style="display: flex; align-items: center; gap: var(--space-sm);">
+                {{if .PosterPath}}<a href="/media/{{.MediaID}}"><img src="{{imgURL "w92" .PosterPath}}" alt="" style="width: 40px; border-radius: 0.125rem;" loading="lazy"></a>{{end}}
+                <div style="flex: 1; min-width: 0;">
+                    <div class="item-row">
+                        <a href="/media/{{.MediaID}}" style="font-weight: 600;">{{.MediaTitle}}{{if .EpisodeInfo}} · {{.EpisodeInfo}}{{end}}</a>
+                        <span class="tag">{{print .MediaType}}</span>
+                    </div>
+                    <div class="item-meta">{{.ReleaseDate}}</div>
+                </div>
+            </li>
+            {{end}}
+        </ul>
+    </div>
+    {{end}}
+
+    {{if .Stats}}
+    <div class="dashboard-section">
+        <h2 class="section-title">Overview</h2>
+        <ul class="item-list">
+            <li class="item item-row"><span>{{call .T "stats.total_movies"}}</span> <span class="count">{{.Stats.TotalMovies}}</span></li>
+            <li class="item item-row"><span>{{call .T "stats.total_episodes"}}</span> <span class="count">{{.Stats.TotalEpisodes}}</span></li>
+            <li class="item item-row"><span>{{call .T "stats.total_time"}}</span> <span class="count">{{formatDuration .Stats.TotalTimeMinutes}}</span></li>
+            <li class="item item-row"><span>{{call .T "stats.avg_rating"}}</span> <span class="count">{{fmtRating .Stats.AvgRating}}</span></li>
+        </ul>
+    </div>
+    {{end}}
+
+    {{if and (not .Watching) (not .Unrated) (not .Upcoming)}}
+    <div class="empty-state">{{call .T "library.empty"}}</div>
+    {{end}}
+</div>
+{{end}}
+{{end}}
