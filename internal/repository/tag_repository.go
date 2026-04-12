@@ -76,6 +76,37 @@ func (r *TagRepository) ListByUser(ctx context.Context, userID string) ([]model.
 	return tags, rows.Err()
 }
 
+func (r *TagRepository) Update(ctx context.Context, id, name string) error {
+	_, err := r.conn(ctx).ExecContext(ctx,
+		`UPDATE tag SET name = ? WHERE id = ?`, name, id)
+	if err != nil {
+		return fmt.Errorf("updating tag: %w", err)
+	}
+	return nil
+}
+
+func (r *TagRepository) CountsByUser(ctx context.Context, userID string) (map[string]int, error) {
+	rows, err := r.conn(ctx).QueryContext(ctx,
+		`SELECT t.id, COUNT(lt.library_id)
+		 FROM tag t LEFT JOIN library_tag lt ON t.id = lt.tag_id
+		 WHERE t.user_id = ?
+		 GROUP BY t.id`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("counting tag usage: %w", err)
+	}
+	defer rows.Close()
+	out := map[string]int{}
+	for rows.Next() {
+		var id string
+		var count int
+		if err := rows.Scan(&id, &count); err != nil {
+			return nil, err
+		}
+		out[id] = count
+	}
+	return out, rows.Err()
+}
+
 func (r *TagRepository) Delete(ctx context.Context, id string) error {
 	_, err := r.conn(ctx).ExecContext(ctx, `DELETE FROM tag WHERE id = ?`, id)
 	if err != nil {

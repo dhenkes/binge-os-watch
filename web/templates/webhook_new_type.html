@@ -1,0 +1,45 @@
+{{template "layout" .}}
+
+{{define "title"}}New webhook — binge-os-watch{{end}}
+
+{{define "content"}}
+<div class="page">
+    <div class="page-header">
+        <div class="breadcrumb"><a href="/settings">{{call .T "settings.title"}}</a><span class="sep">/</span><a href="/webhooks">Webhooks</a><span class="sep">/</span><span class="current">New</span></div>
+        <hr class="page-header-sep">
+    </div>
+
+    <ul class="item-list">
+        <li class="item">
+            <a href="/webhooks/new?service=generic" style="display: block; text-decoration: none; color: inherit;">
+                <strong>Generic JSON</strong>
+                <div class="item-meta">Sends a JSON payload to any URL. Works with most automation tools.</div>
+            </a>
+        </li>
+        <li class="item">
+            <a href="/webhooks/new?service=discord" style="display: block; text-decoration: none; color: inherit;">
+                <strong>Discord</strong>
+                <div class="item-meta">Posts formatted messages to a Discord channel webhook.</div>
+            </a>
+        </li>
+        <li class="item">
+            <a href="/webhooks/new?service=slack" style="display: block; text-decoration: none; color: inherit;">
+                <strong>Slack</strong>
+                <div class="item-meta">Posts formatted messages to a Slack incoming webhook.</div>
+            </a>
+        </li>
+        <li class="item">
+            <a href="/webhooks/new?service=ntfy" style="display: block; text-decoration: none; color: inherit;">
+                <strong>ntfy</strong>
+                <div class="item-meta">Sends push notifications via ntfy.sh or a self-hosted ntfy server.</div>
+            </a>
+        </li>
+        <li class="item">
+            <a href="/webhooks/new?service=custom" style="display: block; text-decoration: none; color: inherit;">
+                <strong>Custom (template)</strong>
+                <div class="item-meta">Full control over the request body and headers using Go template syntax.</div>
+            </a>
+        </li>
+    </ul>
+</div>
+{{end}}

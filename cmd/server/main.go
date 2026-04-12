@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -25,8 +26,16 @@ import (
 	"github.com/dhenkes/binge-os-watch/web"
 )
 
+// Set via -ldflags at build time (see Makefile).
+var (
+	version   = "dev"
+	commit    = "unknown"
+	buildDate = "unknown"
+)
+
 func main() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+	slog.Info("starting binge-os-watch", "version", version, "commit", commit, "build_date", buildDate)
 
 	cfg := config.Load()
 	slog.Info("binge-os-watch starting", "db", cfg.DB.Path)
@@ -146,12 +155,42 @@ func main() {
 	r.Use(chimw.Recoverer)
 	r.Use(chimw.Timeout(30 * time.Second))
 
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+	healthHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"status":"ok"}`))
+		dbStatus := "ok"
+		status := "ok"
+		code := http.StatusOK
+		if err := db.PingContext(r.Context()); err != nil {
+			dbStatus = "error"
+			status = "degraded"
+			code = http.StatusServiceUnavailable
+		}
+		w.WriteHeader(code)
+		json.NewEncoder(w).Encode(map[string]string{
+			"status":  status,
+			"db":      dbStatus,
+			"version": version,
+		})
 	})
 
+	versionHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"version":    version,
+			"commit":     commit,
+			"build_date": buildDate,
+		})
+	})
+
+	r.Get("/health", healthHandler)
+	r.Get("/version", versionHandler)
+	r.Get("/api/v1/health", healthHandler)
+	r.Get("/api/v1/version", versionHandler)
+
 	authLimit := httprate.Limit(5, time.Minute, httprate.WithKeyFuncs(httprate.KeyByIP))
+
+	// JSON API.
+	if !cfg.Server.DisableAPI {
 	if !cfg.Server.DisableRegistration {
 		r.With(authLimit).Post("/api/v1/users:register", authHandler.Register)
 	}
@@ -212,6 +251,7 @@ func main() {
 		r.Get("/api/v1/settings", settingsHandler.Get)
 		r.Patch("/api/v1/settings", settingsHandler.Update)
 	})
+	} // end DisableAPI
 
 	// Public ICS feed (token-authenticated, no session required).
 	r.Get("/ics/{token}", pageHandler.HandleICSFeed)
@@ -277,6 +317,8 @@ func main() {
 			r.Post("/suggestions/{id}/restore", pageHandler.HandleSuggestionRestore)
 
 			r.Get("/keywords", pageHandler.Keywords)
+			r.Get("/keywords/new-page", pageHandler.KeywordNewPage)
+			r.Get("/keywords/{id}/edit", pageHandler.KeywordEditPage)
 			r.Post("/keywords/new", pageHandler.HandleKeywordCreate)
 			r.Post("/keywords/{id}/update", pageHandler.HandleKeywordUpdate)
 			r.Post("/keywords/{id}/delete", pageHandler.HandleKeywordDelete)
@@ -288,7 +330,10 @@ func main() {
 			r.Post("/admin/tmdb-jobs/delete", pageHandler.HandleTMDBJobDelete)
 
 			r.Get("/tags", pageHandler.TagsPage)
+			r.Get("/tags/new-page", pageHandler.TagNewPage)
+			r.Get("/tags/{id}/edit", pageHandler.TagEditPage)
 			r.Post("/tags/new", pageHandler.HandleTagPageCreate)
+			r.Post("/tags/{id}/update", pageHandler.HandleTagPageUpdate)
 			r.Post("/tags/{id}/delete", pageHandler.HandleTagPageDelete)
 
 			r.Get("/settings", pageHandler.Settings)
@@ -298,6 +343,8 @@ func main() {
 			r.Post("/settings/tags/{id}/delete", pageHandler.HandleTagDelete)
 
 			r.Get("/webhooks", pageHandler.Webhooks)
+			r.Get("/webhooks/new-type", pageHandler.WebhookNewType)
+			r.Get("/webhooks/new", pageHandler.WebhookNew)
 			r.Get("/webhooks/{id}", pageHandler.WebhookDetail)
 			r.Get("/webhooks/{id}/edit", pageHandler.WebhookEdit)
 			r.Post("/webhooks/new", pageHandler.HandleWebhookCreate)

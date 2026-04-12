@@ -4,60 +4,57 @@
 
 {{define "content"}}
 <div class="page">
-    <div class="item-meta" style="margin-bottom: var(--space-md);">
-        <a href="/webhooks">&larr; Back to webhooks</a>
-    </div>
-
-    <h1 class="page-title">{{.Webhook.Name}} <span class="text-muted text-xs">({{.Webhook.Service}})</span></h1>
-
-    <div class="settings-block">
-        <h2>Configuration</h2>
-        <ul class="item-list">
-            <li class="item item-row"><span>URL</span><span class="text-xs" style="word-break: break-all;">{{.Webhook.URL}}</span></li>
-            <li class="item item-row"><span>Service</span><span>{{.Webhook.Service}}</span></li>
-            <li class="item item-row"><span>Events</span><span>{{.Webhook.Events}}</span></li>
-            <li class="item item-row"><span>Created</span><span>{{fmtDate .Webhook.CreatedAt}}</span></li>
-            {{if .Webhook.BodyTemplate}}
-            <li class="item">
-                <div>Body template</div>
-                <code style="display: block; padding: var(--space-sm); background: var(--bg-input); border: 1px solid var(--border); font-size: var(--text-xs); word-break: break-all; margin-top: var(--space-xs);">{{.Webhook.BodyTemplate}}</code>
-            </li>
-            {{end}}
-            {{if .Webhook.Headers}}
-            <li class="item">
-                <div>Custom headers</div>
-                <code style="display: block; padding: var(--space-sm); background: var(--bg-input); border: 1px solid var(--border); font-size: var(--text-xs); word-break: break-all; margin-top: var(--space-xs);">{{.Webhook.Headers}}</code>
-            </li>
-            {{end}}
-        </ul>
-
-        <div style="display: flex; gap: var(--space-sm); align-items: center; margin-top: var(--space-md);">
+    <div class="page-header">
+        <div class="breadcrumb"><a href="/settings">{{call .T "settings.title"}}</a><span class="sep">/</span><a href="/webhooks">Webhooks</a><span class="sep">/</span><span class="current">{{.Webhook.Name}}</span></div>
+        <div class="page-header-actions">
             <a href="/webhooks/{{.Webhook.ID}}/edit" class="btn">Edit</a>
             <form autocomplete="off" method="post" action="/webhooks/{{.Webhook.ID}}/test">
                 <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
                 <button type="submit" class="btn">Send test</button>
             </form>
-            <details class="inline-confirm" style="margin-left: auto;">
-                <summary>delete</summary>
+            <details class="inline-confirm"><summary>Delete</summary>
                 <form autocomplete="off" method="post" action="/webhooks/{{.Webhook.ID}}/delete">
                     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
-                    <button type="submit" class="confirm-delete">confirm?</button>
+                    <button type="submit" class="confirm-delete">Confirm?</button>
                 </form>
             </details>
         </div>
+        <hr class="page-header-sep">
     </div>
 
-    <div class="settings-block">
-        <h2>Delivery history</h2>
+    <div class="section">
+        <div class="section-title">Configuration</div>
+        <ul class="item-list">
+            <li class="item"><div class="item-row"><span class="text-muted">URL</span><span style="word-break: break-all;">{{.Webhook.URL}}</span></div></li>
+            <li class="item"><div class="item-row"><span class="text-muted">Service</span><span>{{.Webhook.Service}}</span></div></li>
+            <li class="item"><div class="item-row"><span class="text-muted">Events</span><span>{{.Webhook.Events}}</span></div></li>
+            <li class="item"><div class="item-row"><span class="text-muted">Created</span><span>{{fmtDate .Webhook.CreatedAt}}</span></div></li>
+            {{if .Webhook.BodyTemplate}}
+            <li class="item">
+                <div class="item-row"><span class="text-muted">Body template</span></div>
+                <code class="code-display" style="margin-top: var(--space-xs);">{{.Webhook.BodyTemplate}}</code>
+            </li>
+            {{end}}
+            {{if .Webhook.Headers}}
+            <li class="item">
+                <div class="item-row"><span class="text-muted">Custom headers</span></div>
+                <code class="code-display" style="margin-top: var(--space-xs);">{{.Webhook.Headers}}</code>
+            </li>
+            {{end}}
+        </ul>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Delivery history</div>
         {{if .Deliveries}}
         <ul class="item-list">
             {{range .Deliveries}}
             <li class="item">
                 <div class="item-row">
-                    <span><strong>{{.Event}}</strong> · {{if .StatusCode}}HTTP {{.StatusCode}}{{else}}<span style="color: var(--error-text);">error</span>{{end}}</span>
-                    <span class="text-xs text-muted">{{fmtDate .CreatedAt}}</span>
+                    <span><strong>{{.Event}}</strong> · {{if .StatusCode}}HTTP {{.StatusCode}}{{else}}<span class="text-error">error</span>{{end}}</span>
+                    <span class="text-muted">{{fmtDate .CreatedAt}}</span>
                 </div>
-                {{if .Error}}<div class="item-meta" style="color: var(--error-text);">{{.Error}}</div>{{end}}
+                {{if .Error}}<div class="item-meta text-error">{{.Error}}</div>{{end}}
             </li>
             {{end}}
         </ul>

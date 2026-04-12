@@ -4,21 +4,23 @@
 
 {{define "content"}}
 <div class="page">
-    <h1 class="page-title">{{call .T "search.title"}}</h1>
+    <div class="page-header">
+        <div class="breadcrumb"><span class="current">{{call .T "search.title"}}</span></div>
+        <div class="page-header-row">
+            <div class="filter-bar">
+                <a href="/search{{if .Query}}?q={{.Query}}{{end}}"{{if not .SearchType}} class="active"{{end}}>All</a>
+                <a href="/search?{{if .Query}}q={{.Query}}&{{end}}type=movie"{{if eq .SearchType "movie"}} class="active"{{end}}>{{call .T "media.movie"}}</a>
+                <a href="/search?{{if .Query}}q={{.Query}}&{{end}}type=tv"{{if eq .SearchType "tv"}} class="active"{{end}}>{{call .T "media.tv"}}</a>
+            </div>
+        </div>
+        <hr class="page-header-sep">
+    </div>
 
     <form autocomplete="off" method="get" action="/search" class="search-form">
         <input type="search" name="q" value="{{.Query}}" placeholder="{{call .T "search.hint"}}" required autofocus autocomplete="off">
         {{if .SearchType}}<input type="hidden" name="type" value="{{.SearchType}}" autocomplete="off">{{end}}
         <button type="submit" class="btn btn-primary">{{call .T "action.search"}}</button>
     </form>
-
-    {{if .Query}}
-    <div class="filter-bar">
-        <a href="/search?q={{.Query}}"{{if not .SearchType}} class="active"{{end}}>All</a>
-        <a href="/search?q={{.Query}}&type=movie"{{if eq .SearchType "movie"}} class="active"{{end}}>{{call .T "media.movie"}}</a>
-        <a href="/search?q={{.Query}}&type=tv"{{if eq .SearchType "tv"}} class="active"{{end}}>{{call .T "media.tv"}}</a>
-    </div>
-    {{end}}
 
     {{if .Results}}
     <div class="card-grid">
@@ -49,10 +51,8 @@
                     <span class="text-muted">{{.MediaType}}</span>
                     {{year .DisplayDate}}
                 </div>
-            </div>
-            {{if not .InLibrary}}
-            <div class="card-actions">
-                <form autocomplete="off" method="post" action="/search/add">
+                {{if not .InLibrary}}
+                <form autocomplete="off" method="post" action="/search/add" style="margin-top: var(--space-xs);">
                     <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
                     <input type="hidden" name="tmdb_id" value="{{.ID}}" autocomplete="off">
                     <input type="hidden" name="media_type" value="{{.MediaType}}" autocomplete="off">
@@ -63,18 +63,18 @@
                     <input type="hidden" name="q" value="{{$.Query}}" autocomplete="off">
                     <input type="hidden" name="page" value="{{$.SearchPage}}" autocomplete="off">
                     <input type="hidden" name="type" value="{{$.SearchType}}" autocomplete="off">
-                    <button type="submit" class="btn" style="font-size: var(--text-xs); width: 100%;">{{call $.T "media.add_to_lib"}}</button>
+                    <button type="submit" class="btn" style="width: 100%;">{{call $.T "media.add_to_lib"}}</button>
                 </form>
+                {{else}}
+                <div class="text-muted" style="margin-top: var(--space-xs);">{{call $.T "media.in_library"}}</div>
+                {{end}}
             </div>
-            {{else}}
-            <div class="card-actions"><span class="text-xs text-muted">{{call $.T "media.in_library"}}</span></div>
-            {{end}}
         </div>
         {{end}}
     </div>
 
     {{if gt .TotalPages 1}}
-    <div class="load-more" style="display: flex; gap: var(--space-sm);">
+    <div style="padding: var(--space-md) 0; display: flex; gap: var(--space-sm);">
         {{if gt .SearchPage 1}}
         <a href="/search?q={{.Query}}{{if .SearchType}}&type={{.SearchType}}{{end}}&page={{add .SearchPage -1}}" class="btn">Prev</a>
         {{end}}

@@ -4,35 +4,38 @@
 
 {{define "content"}}
 <div class="page">
-    <h1 class="page-title">Watched <span class="count">({{.TotalSize}})</span></h1>
-
-    <div class="filter-bar">
-        <a href="/watched"{{if not .MediaType}} class="active"{{end}}>All</a>
-        <a href="/watched?type=movie"{{if eq .MediaType "movie"}} class="active"{{end}}>{{call .T "media.movie"}}</a>
-        <a href="/watched?type=tv"{{if eq .MediaType "tv"}} class="active"{{end}}>{{call .T "media.tv"}}</a>
-    </div>
-
-    <div class="sort-bar">
-        {{call .T "library.sort"}}:
-        <a href="/watched?type={{.MediaType}}&sort=watched_at"{{if or (eq .Sort "watched_at") (eq .Sort "")}} class="active"{{end}}>Watched date</a>
-        <a href="/watched?type={{.MediaType}}&sort=rating"{{if eq .Sort "rating"}} class="active"{{end}}>{{call .T "library.sort_rating"}}</a>
-        <a href="/watched?type={{.MediaType}}&sort=title"{{if eq .Sort "title"}} class="active"{{end}}>{{call .T "library.sort_title"}}</a>
-        <a href="/watched?type={{.MediaType}}&sort=release_date"{{if eq .Sort "release_date"}} class="active"{{end}}>{{call .T "library.sort_release"}}</a>
+    <div class="page-header">
+        <div class="breadcrumb"><span class="current">Watched <span class="count">({{.TotalSize}})</span></span></div>
+        <div class="page-header-row">
+            <div class="filter-bar">
+                <a href="/watched"{{if not .MediaType}} class="active"{{end}}>All</a>
+                <a href="/watched?type=movie"{{if eq .MediaType "movie"}} class="active"{{end}}>{{call .T "media.movie"}}</a>
+                <a href="/watched?type=tv"{{if eq .MediaType "tv"}} class="active"{{end}}>{{call .T "media.tv"}}</a>
+            </div>
+            <div class="sort-bar">
+                {{call .T "library.sort"}}:
+                <a href="/watched?type={{.MediaType}}&sort=watched_at"{{if or (eq .Sort "watched_at") (eq .Sort "")}} class="active"{{end}}>Watched date</a>
+                <a href="/watched?type={{.MediaType}}&sort=rating"{{if eq .Sort "rating"}} class="active"{{end}}>{{call .T "library.sort_rating"}}</a>
+                <a href="/watched?type={{.MediaType}}&sort=title"{{if eq .Sort "title"}} class="active"{{end}}>{{call .T "library.sort_title"}}</a>
+                <a href="/watched?type={{.MediaType}}&sort=release_date"{{if eq .Sort "release_date"}} class="active"{{end}}>{{call .T "library.sort_release"}}</a>
+            </div>
+        </div>
+        <hr class="page-header-sep">
     </div>
 
     {{if .Items}}
     <ul class="item-list">
         {{range .Items}}
-        <li class="item" style="display: flex; align-items: center; gap: var(--space-sm);">
-            {{if .Media.PosterPath}}<a href="/media/{{.Media.ID}}"><img src="{{imgURL "w92" .Media.PosterPath}}" alt="" style="width: 40px; border-radius: 0.125rem;" loading="lazy"></a>{{end}}
-            <div style="flex: 1; min-width: 0;">
+        <li class="item item-row-thumb">
+            {{if .Media.PosterPath}}<a href="/media/{{.Media.ID}}"><img class="item-thumb" src="{{imgURL "w92" .Media.PosterPath}}" alt="" loading="lazy"></a>{{end}}
+            <div class="item-content">
                 <div class="item-row">
                     <a href="/media/{{.Media.ID}}" style="font-weight: 600;">{{.Media.Title}}</a>
-                    <span class="text-muted text-xs">{{year .Media.ReleaseDate}}</span>
+                    <span class="text-muted">{{year .Media.ReleaseDate}}</span>
                 </div>
                 <div class="item-meta">
                     <span class="badge {{statusBadge .Media.Status}}">{{call $.T (statusLabel .Media.Status)}}</span>
-                    {{if .Rating}} · <span style="color: #f5c518;">&#9733; {{.Rating}}</span>{{end}}
+                    {{if .Rating}} · <span class="star-gold">&#9733; {{.Rating}}</span>{{end}}
                     {{if .Media.Genres}} · {{.Media.Genres}}{{end}}
                 </div>
             </div>
@@ -41,7 +44,7 @@
     </ul>
 
     {{if .NextPageToken}}
-    <div class="load-more">
+    <div style="padding: var(--space-md) 0;">
         <a href="/watched?type={{.MediaType}}&sort={{.Sort}}&page_token={{.NextPageToken}}" class="btn">{{call .T "discover.load_more"}}</a>
     </div>
     {{end}}

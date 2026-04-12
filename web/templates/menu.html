@@ -4,7 +4,10 @@
 
 {{define "content"}}
 <div class="page">
-    <h1 class="page-title">Menu</h1>
+    <div class="page-header">
+        <div class="breadcrumb"><span class="current">Menu</span></div>
+        <hr class="page-header-sep">
+    </div>
 
     <ul class="item-list">
         <li class="item"><a href="/suggestions">{{call .T "nav.suggestions"}}</a></li>

@@ -37,6 +37,7 @@ type ServerConfig struct {
 	Addr                string `toml:"addr"`
 	BaseURL             string `toml:"base_url"`
 	DisableUI           bool   `toml:"disable_ui"`
+	DisableAPI          bool   `toml:"disable_api"`
 	DisableRegistration bool   `toml:"disable_registration"`
 	ImageCacheDir       string `toml:"image_cache_dir"`
 }
@@ -193,6 +194,7 @@ addr = ":8080"
 
 # Set to true to disable the web UI and only serve the API.
 # disable_ui = false
+# disable_api = false
 
 # Set to true to disable user registration (existing accounts still work).
 # disable_registration = false

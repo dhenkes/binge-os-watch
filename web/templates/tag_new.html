@@ -1,0 +1,21 @@
+{{template "layout" .}}
+
+{{define "title"}}New tag — binge-os-watch{{end}}
+
+{{define "content"}}
+<div class="page">
+    <div class="page-header">
+        <div class="breadcrumb"><a href="/tags">Tags</a><span class="sep">/</span><span class="current">New</span></div>
+        <hr class="page-header-sep">
+    </div>
+
+    <form autocomplete="off" method="post" action="/tags/new">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+        <div class="settings-row">
+            <label>Name</label>
+            <input type="text" name="name" placeholder="Tag name" required autofocus autocomplete="off">
+        </div>
+        <button type="submit" class="btn btn-primary">Create</button>
+    </form>
+</div>
+{{end}}

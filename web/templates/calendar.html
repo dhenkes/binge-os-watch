@@ -4,67 +4,73 @@
 
 {{define "content"}}
 <div class="page">
-    <h1 class="page-title">{{call .T "calendar.title"}}</h1>
-
-    <div class="filter-bar">
-        <a href="/calendar?section={{.Section}}&type={{.Filter.MediaType}}&range=7d"{{if eq .Filter.Range "7d"}} class="active"{{end}}>7d</a>
-        <a href="/calendar?section={{.Section}}&type={{.Filter.MediaType}}&range=30d"{{if eq .Filter.Range "30d"}} class="active"{{end}}>30d</a>
-        <a href="/calendar?section={{.Section}}&type={{.Filter.MediaType}}&range=90d"{{if eq .Filter.Range "90d"}} class="active"{{end}}>90d</a>
-        <a href="/calendar?section={{.Section}}&type={{.Filter.MediaType}}&range=all"{{if eq .Filter.Range "all"}} class="active"{{end}}>All</a>
-
-        <a href="/calendar?section={{.Section}}&range={{.Filter.Range}}"{{if not .Filter.MediaType}} class="active"{{end}}>All</a>
-        <a href="/calendar?section={{.Section}}&range={{.Filter.Range}}&type=movie"{{if eq (print .Filter.MediaType) "movie"}} class="active"{{end}}>{{call .T "media.movie"}}</a>
-        <a href="/calendar?section={{.Section}}&range={{.Filter.Range}}&type=tv"{{if eq (print .Filter.MediaType) "tv"}} class="active"{{end}}>{{call .T "media.tv"}}</a>
-    </div>
-
-    <div class="filter-bar">
-        <a href="/calendar?range={{.Filter.Range}}&type={{.Filter.MediaType}}"{{if not .Section}} class="active"{{end}}>All</a>
-        <a href="/calendar?range={{.Filter.Range}}&type={{.Filter.MediaType}}&section=recent"{{if eq .Section "recent"}} class="active"{{end}}>{{call .T "calendar.recent"}}</a>
-        <a href="/calendar?range={{.Filter.Range}}&type={{.Filter.MediaType}}&section=upcoming"{{if eq .Section "upcoming"}} class="active"{{end}}>{{call .T "calendar.upcoming"}}</a>
+    <div class="page-header">
+        <div class="breadcrumb"><span class="current">{{call .T "calendar.title"}}</span></div>
+        <div class="page-header-row">
+            <div class="filter-bar">
+                <a href="/calendar?section={{.Section}}&type={{.Filter.MediaType}}&range=7d"{{if eq .Filter.Range "7d"}} class="active"{{end}}>7d</a>
+                <a href="/calendar?section={{.Section}}&type={{.Filter.MediaType}}&range=30d"{{if eq .Filter.Range "30d"}} class="active"{{end}}>30d</a>
+                <a href="/calendar?section={{.Section}}&type={{.Filter.MediaType}}&range=90d"{{if eq .Filter.Range "90d"}} class="active"{{end}}>90d</a>
+                <a href="/calendar?section={{.Section}}&type={{.Filter.MediaType}}&range=all"{{if eq .Filter.Range "all"}} class="active"{{end}}>All</a>
+                <span class="sep">|</span>
+                <a href="/calendar?section={{.Section}}&range={{.Filter.Range}}"{{if not .Filter.MediaType}} class="active"{{end}}>All</a>
+                <a href="/calendar?section={{.Section}}&range={{.Filter.Range}}&type=movie"{{if eq (print .Filter.MediaType) "movie"}} class="active"{{end}}>{{call .T "media.movie"}}</a>
+                <a href="/calendar?section={{.Section}}&range={{.Filter.Range}}&type=tv"{{if eq (print .Filter.MediaType) "tv"}} class="active"{{end}}>{{call .T "media.tv"}}</a>
+                <span class="sep">|</span>
+                <a href="/calendar?range={{.Filter.Range}}&type={{.Filter.MediaType}}"{{if not .Section}} class="active"{{end}}>All</a>
+                <a href="/calendar?range={{.Filter.Range}}&type={{.Filter.MediaType}}&section=recent"{{if eq .Section "recent"}} class="active"{{end}}>{{call .T "calendar.recent"}}</a>
+                <a href="/calendar?range={{.Filter.Range}}&type={{.Filter.MediaType}}&section=upcoming"{{if eq .Section "upcoming"}} class="active"{{end}}>{{call .T "calendar.upcoming"}}</a>
+            </div>
+        </div>
+        <hr class="page-header-sep">
     </div>
 
     {{if or (not .Section) (eq .Section "recent")}}
-    <h2 class="section-title">{{call .T "calendar.recent"}}</h2>
-    {{if .Recent}}
-    <ul class="item-list">
-        {{range .Recent}}
-        <li class="item" style="display: flex; align-items: center; gap: var(--space-sm);">
-            {{if .PosterPath}}<a href="/media/{{.MediaID}}"><img src="{{imgURL "w92" .PosterPath}}" alt="" style="width: 40px; border-radius: 0.125rem;" loading="lazy"></a>{{end}}
-            <div style="flex: 1; min-width: 0;">
-                <div class="item-row">
-                    <a href="/media/{{.MediaID}}" style="font-weight: 600;">{{.MediaTitle}}{{if .EpisodeInfo}} · {{.EpisodeInfo}}{{end}}</a>
-                    <span>{{if .Watched}}<span style="color: var(--success);">&#10003;</span> {{end}}<span class="tag">{{print .MediaType}}</span></span>
+    <div class="section">
+        <div class="section-title">{{call .T "calendar.recent"}}</div>
+        {{if .Recent}}
+        <ul class="item-list">
+            {{range .Recent}}
+            <li class="item item-row-thumb">
+                {{if .PosterPath}}<a href="/media/{{.MediaID}}"><img class="item-thumb" src="{{imgURL "w92" .PosterPath}}" alt="" loading="lazy"></a>{{end}}
+                <div class="item-content">
+                    <div class="item-row">
+                        <a href="/media/{{.MediaID}}" style="font-weight: 600;">{{.MediaTitle}}{{if .EpisodeInfo}} · {{.EpisodeInfo}}{{end}}</a>
+                        <span>{{if .Watched}}<span class="text-success">&#10003;</span> {{end}}<span class="tag">{{print .MediaType}}</span></span>
+                    </div>
+                    <div class="item-meta">{{.ReleaseDate}}</div>
                 </div>
-                <div class="item-meta">{{.ReleaseDate}}</div>
-            </div>
-        </li>
+            </li>
+            {{end}}
+        </ul>
+        {{else}}
+        <div class="empty-state">{{call .T "calendar.empty"}}</div>
         {{end}}
-    </ul>
-    {{else}}
-    <div class="empty-state">{{call .T "calendar.empty"}}</div>
-    {{end}}
+    </div>
     {{end}}
 
     {{if or (not .Section) (eq .Section "upcoming")}}
-    <h2 class="section-title"{{if not .Section}} style="margin-top: var(--space-xl);"{{end}}>{{call .T "calendar.upcoming"}}</h2>
-    {{if .Upcoming}}
-    <ul class="item-list">
-        {{range .Upcoming}}
-        <li class="item" style="display: flex; align-items: center; gap: var(--space-sm);">
-            {{if .PosterPath}}<a href="/media/{{.MediaID}}"><img src="{{imgURL "w92" .PosterPath}}" alt="" style="width: 40px; border-radius: 0.125rem;" loading="lazy"></a>{{end}}
-            <div style="flex: 1; min-width: 0;">
-                <div class="item-row">
-                    <a href="/media/{{.MediaID}}" style="font-weight: 600;">{{.MediaTitle}}{{if .EpisodeInfo}} · {{.EpisodeInfo}}{{end}}</a>
-                    <span class="tag">{{print .MediaType}}</span>
+    <div class="section">
+        <div class="section-title">{{call .T "calendar.upcoming"}}</div>
+        {{if .Upcoming}}
+        <ul class="item-list">
+            {{range .Upcoming}}
+            <li class="item item-row-thumb">
+                {{if .PosterPath}}<a href="/media/{{.MediaID}}"><img class="item-thumb" src="{{imgURL "w92" .PosterPath}}" alt="" loading="lazy"></a>{{end}}
+                <div class="item-content">
+                    <div class="item-row">
+                        <a href="/media/{{.MediaID}}" style="font-weight: 600;">{{.MediaTitle}}{{if .EpisodeInfo}} · {{.EpisodeInfo}}{{end}}</a>
+                        <span class="tag">{{print .MediaType}}</span>
+                    </div>
+                    <div class="item-meta">{{.ReleaseDate}}</div>
                 </div>
-                <div class="item-meta">{{.ReleaseDate}}</div>
-            </div>
-        </li>
+            </li>
+            {{end}}
+        </ul>
+        {{else}}
+        <div class="empty-state">{{call .T "calendar.empty"}}</div>
         {{end}}
-    </ul>
-    {{else}}
-    <div class="empty-state">{{call .T "calendar.empty"}}</div>
-    {{end}}
+    </div>
     {{end}}
 </div>
 {{end}}

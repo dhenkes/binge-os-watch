@@ -4,30 +4,25 @@
 
 {{define "content"}}
 <div class="page">
-    <div class="item-meta" style="margin-bottom: var(--space-md);">
-        <a href="/search{{if .Query}}?q={{.Query}}{{end}}">&larr; Back to search</a>
+    <div class="page-header">
+        <div class="breadcrumb"><a href="/search{{if .Query}}?q={{.Query}}{{end}}">{{call .T "nav.search"}}</a><span class="sep">/</span><span class="current">{{.Title}}</span></div>
+        <hr class="page-header-sep">
     </div>
 
-    {{/* Hero: same layout as media_detail.html so a preview looks like a
-         detail page — only the affordances differ. */}}
-    <div style="display: flex; gap: var(--space-md); flex-wrap: wrap;">
+    <div class="media-hero">
         {{if .PosterPath}}
-        <img src="{{imgURL "w342" .PosterPath}}" alt="{{.Title}}" style="width: 200px; border-radius: 0.25rem;" loading="lazy">
+        <div class="media-poster">
+            <img src="{{imgURL "w342" .PosterPath}}" alt="{{.Title}}" loading="lazy">
+        </div>
         {{end}}
-        <div style="flex: 1; min-width: 16rem;">
-            <h1 class="page-title">{{.Title}} <span class="text-muted">({{year .ReleaseDate}})</span></h1>
+        <div class="media-info">
+            <ul class="item-list">
+                <li class="item"><div class="item-row"><span class="text-muted">Year</span><span>{{year .ReleaseDate}}</span></div></li>
+                {{if .Genres}}<li class="item"><div class="item-row"><span class="text-muted">Genres</span><span>{{.Genres}}</span></div></li>{{end}}
+                {{if .Runtime}}<li class="item"><div class="item-row"><span class="text-muted">Runtime</span><span>{{formatDuration .Runtime}}</span></div></li>{{end}}
+                {{if .VoteAverage}}<li class="item"><div class="item-row"><span class="text-muted">TMDB</span><span>{{fmtRating .VoteAverage}}/10</span></div></li>{{end}}
+            </ul>
 
-            {{if .Genres}}<p class="text-muted text-xs" style="margin-bottom: var(--space-sm);">{{.Genres}}</p>{{end}}
-            {{if .Runtime}}<p class="text-muted text-xs" style="margin-bottom: var(--space-sm);">{{formatDuration .Runtime}}</p>{{end}}
-            {{if .VoteAverage}}<p class="text-muted text-xs" style="margin-bottom: var(--space-sm);">TMDB: {{fmtRating .VoteAverage}}/10</p>{{end}}
-
-            {{if .Overview}}
-            <p class="text-muted" style="margin-top: var(--space-sm); margin-bottom: var(--space-md);">{{.Overview}}</p>
-            {{end}}
-
-            {{/* Primary CTA — either "Add to library" (not yet in library)
-                 or "View in library" (already in library). Mirrors the
-                 status-change block's position on media_detail.html. */}}
             <div style="margin-top: var(--space-md);">
             {{if .InLibrary}}
                 <a href="/media/{{.MediaID}}" class="btn btn-primary">View in library</a>
@@ -47,70 +42,67 @@
         </div>
     </div>
 
-    {{/* Watch Providers — same block as media_detail.html. */}}
+    {{/* Description */}}
+    {{if .Overview}}
+    <div class="section">
+        <div class="section-title">Description</div>
+        <p class="description">{{.Overview}}</p>
+    </div>
+    {{end}}
+
+    {{/* Watch Providers */}}
     {{if .Providers}}
-    <div style="margin-top: var(--space-xl);">
-        <h2 class="section-title">{{call .T "media.where_to_watch"}}</h2>
+    <div class="section">
+        <div class="section-title">{{call .T "media.where_to_watch"}}</div>
         {{if or .Providers.Stream .Providers.Rent .Providers.Buy}}
-        {{if .Providers.Stream}}
-        <div style="margin-bottom: var(--space-sm);">
-            <span class="text-muted text-xs">Stream:</span>
+        <ul class="item-list">
+            {{if .Providers.Stream}}
             {{range .Providers.Stream}}
-            <span class="tag">{{.ProviderName}}</span>
+            <li class="item"><div class="item-row"><span>{{.ProviderName}}</span><span class="tag">stream</span></div></li>
             {{end}}
-        </div>
-        {{end}}
-        {{if .Providers.Rent}}
-        <div style="margin-bottom: var(--space-sm);">
-            <span class="text-muted text-xs">Rent:</span>
+            {{end}}
+            {{if .Providers.Rent}}
             {{range .Providers.Rent}}
-            <span class="tag">{{.ProviderName}}</span>
+            <li class="item"><div class="item-row"><span>{{.ProviderName}}</span><span class="tag">rent</span></div></li>
             {{end}}
-        </div>
-        {{end}}
-        {{if .Providers.Buy}}
-        <div style="margin-bottom: var(--space-sm);">
-            <span class="text-muted text-xs">Buy:</span>
+            {{end}}
+            {{if .Providers.Buy}}
             {{range .Providers.Buy}}
-            <span class="tag">{{.ProviderName}}</span>
+            <li class="item"><div class="item-row"><span>{{.ProviderName}}</span><span class="tag">buy</span></div></li>
             {{end}}
-        </div>
-        {{end}}
+            {{end}}
+        </ul>
         {{if .Providers.Link}}
-        <a href="{{.Providers.Link}}" target="_blank" rel="noopener noreferrer" class="text-muted text-xs">JustWatch</a>
+        <a href="{{.Providers.Link}}" target="_blank" rel="noopener noreferrer" class="text-muted text-sm" style="margin-top: var(--space-xs); display: inline-block;">JustWatch</a>
         {{end}}
         {{else}}
-        <p class="text-muted text-xs">No streaming data available for your region.</p>
+        <p class="text-muted">No streaming data available for your region.</p>
         {{end}}
     </div>
     {{end}}
 
-    {{/* Seasons & Episodes (TV only) — read-only mirror of the block on
-         media_detail.html. No watch/rate controls because the show isn't
-         in the user's library yet. */}}
+    {{/* Seasons & Episodes (TV only) */}}
     {{if and (eq .MediaType "tv") .PreviewSeasons}}
-    <div style="margin-top: var(--space-xl);">
-        <h2 class="section-title">Seasons</h2>
+    <div class="section">
         {{range .PreviewSeasons}}
-        <details style="margin-bottom: var(--space-sm); border: 1px solid var(--border); border-radius: 0.25rem;">
-            <summary style="padding: var(--space-sm); cursor: pointer; display: flex; align-items: center; gap: var(--space-sm);">
-                <strong>{{.Name}}</strong>
-                <span class="text-muted text-xs">{{.EpisodeCount}} episodes{{if .AirDate}} · {{.AirDate}}{{end}}</span>
+        <details class="season-toggle">
+            <summary>
+                <span>{{.Name}}</span>
+                <span class="season-meta">{{.EpisodeCount}} episodes{{if .AirDate}} · {{.AirDate}}{{end}}</span>
             </summary>
-            <div style="padding: var(--space-sm);">
+            <div style="padding: var(--space-sm) 0;">
                 {{if .Episodes}}
-                <ul class="item-list">
+                <table class="ep-table">
                     {{range .Episodes}}
-                    <li class="item" style="display: flex; align-items: baseline; gap: var(--space-sm); flex-wrap: wrap;">
-                        <span style="min-width: 2rem;" class="text-xs text-muted">E{{.EpisodeNumber}}</span>
-                        <span style="flex: 1;">{{.Name}}</span>
-                        {{if .AirDate}}<span class="text-xs text-muted">{{.AirDate}}</span>{{end}}
-                        {{if .RuntimeMinutes}}<span class="text-xs text-muted">{{.RuntimeMinutes}}m</span>{{end}}
-                    </li>
+                    <tr>
+                        <td class="ep-title">E{{.EpisodeNumber}} · {{.Name}}</td>
+                        {{if .AirDate}}<td class="ep-date">{{.AirDate}}</td>{{end}}
+                        {{if .RuntimeMinutes}}<td class="ep-runtime">{{.RuntimeMinutes}}m</td>{{end}}
+                    </tr>
                     {{end}}
-                </ul>
+                </table>
                 {{else}}
-                <p class="text-muted text-xs">No episodes available.</p>
+                <p class="text-muted">No episodes available.</p>
                 {{end}}
             </div>
         </details>

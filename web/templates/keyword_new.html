@@ -1,0 +1,29 @@
+{{template "layout" .}}
+
+{{define "title"}}New keyword — binge-os-watch{{end}}
+
+{{define "content"}}
+<div class="page">
+    <div class="page-header">
+        <div class="breadcrumb"><a href="/suggestions">{{call .T "keywords.suggestions"}}</a><span class="sep">/</span><a href="/keywords">{{call .T "keywords.title"}}</a><span class="sep">/</span><span class="current">New</span></div>
+        <hr class="page-header-sep">
+    </div>
+
+    <form autocomplete="off" method="post" action="/keywords/new">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+        <div class="settings-row">
+            <label>Keyword</label>
+            <input type="text" name="keyword" placeholder="Keyword" required autofocus autocomplete="off">
+        </div>
+        <div class="settings-row">
+            <label>Media types</label>
+            <select name="media_types" style="width: auto;">
+                <option value="movie,tv">Movies &amp; TV</option>
+                <option value="movie">Movies only</option>
+                <option value="tv">TV Shows only</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">{{call .T "action.create"}}</button>
+    </form>
+</div>
+{{end}}

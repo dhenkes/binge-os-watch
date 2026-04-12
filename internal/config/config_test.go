@@ -15,6 +15,9 @@ func TestDefaults(t *testing.T) {
 	if cfg.Server.DisableUI {
 		t.Error("DisableUI should default to false")
 	}
+	if cfg.Server.DisableAPI {
+		t.Error("DisableAPI should default to false")
+	}
 	if cfg.Server.DisableRegistration {
 		t.Error("DisableRegistration should default to false")
 	}
@@ -98,6 +101,7 @@ func TestDecodeTOML_AllFields(t *testing.T) {
 [server]
 addr = ":9090"
 disable_ui = true
+disable_api = true
 disable_registration = true
 
 [database]
@@ -129,6 +133,9 @@ keyword_scan_interval = "6h"
 	}
 	if !cfg.Server.DisableUI {
 		t.Error("Server.DisableUI should be true")
+	}
+	if !cfg.Server.DisableAPI {
+		t.Error("Server.DisableAPI should be true")
 	}
 	if !cfg.Server.DisableRegistration {
 		t.Error("Server.DisableRegistration should be true")

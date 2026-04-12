@@ -4,28 +4,27 @@
 
 {{define "content"}}
 <div class="page">
-    <div class="item-meta" style="margin-bottom: var(--space-md);">
-        <a href="/media/{{.MediaID}}">{{.MediaTitle}}</a>
-        <span class="sep">&rsaquo;</span>
-        <span>S{{.SeasonNumber}}E{{.Episode.EpisodeNumber}}</span>
+    <div class="page-header">
+        <div class="breadcrumb"><a href="/media/{{.MediaID}}">{{.MediaTitle}}</a><span class="sep">/</span><span class="current">S{{.SeasonNumber}}E{{.Episode.EpisodeNumber}}</span></div>
+        <hr class="page-header-sep">
     </div>
 
-    <h1 class="page-title">{{.Episode.Name}}</h1>
-
     {{if .Episode.AirDate}}
-    <p class="text-muted text-xs" style="margin-bottom: var(--space-md);">{{fmtDate .Episode.AirDate}}{{if .Episode.RuntimeMinutes}} · {{formatDuration .Episode.RuntimeMinutes}}{{end}}</p>
+    <p class="text-muted" style="margin-bottom: var(--space-md);">{{.Episode.Name}} · {{fmtDate .Episode.AirDate}}{{if .Episode.RuntimeMinutes}} · {{formatDuration .Episode.RuntimeMinutes}}{{end}}</p>
+    {{else}}
+    <p style="margin-bottom: var(--space-md);">{{.Episode.Name}}</p>
     {{end}}
 
     {{/* Watch status */}}
     <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-md);">
         {{if .Episode.Watched}}
-        <form autocomplete="off" method="post" action="/episodes/{{.Episode.ID}}/unwatch" class="inline-action">
+        <form autocomplete="off" method="post" action="/episodes/{{.Episode.ID}}/unwatch">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
             <input type="hidden" name="return_to" value="/episodes/{{.Episode.ID}}" autocomplete="off">
-            <button type="submit" class="btn"><span style="color: var(--success);">&#10003;</span> Watched</button>
+            <button type="submit" class="btn"><span class="text-success">&#10003;</span> Watched</button>
         </form>
         {{else}}
-        <form autocomplete="off" method="post" action="/episodes/{{.Episode.ID}}/watch" class="inline-action">
+        <form autocomplete="off" method="post" action="/episodes/{{.Episode.ID}}/watch">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
             <input type="hidden" name="return_to" value="/episodes/{{.Episode.ID}}" autocomplete="off">
             <button type="submit" class="btn">Mark watched</button>
@@ -37,9 +36,9 @@
     <div style="margin-bottom: var(--space-md);">
         <form autocomplete="off" method="post" action="/episodes/{{.Episode.ID}}/watched-at" style="display: flex; gap: var(--space-sm); align-items: center;">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
-            <label class="text-xs text-muted">Watched on:</label>
+            <label class="text-muted">Watched on:</label>
             <input type="date" name="watched_at" value="{{fmtDateInput .Episode.WatchedAt}}" style="width: auto;" autocomplete="off">
-            <button type="submit" class="btn" style="font-size: var(--text-xs);">Save</button>
+            <button type="submit" class="btn">Save</button>
         </form>
     </div>
 
@@ -62,12 +61,15 @@
 
     {{/* Overview */}}
     {{if .Episode.Overview}}
-    <p class="text-muted" style="margin-bottom: var(--space-md);">{{.Episode.Overview}}</p>
+    <div class="section">
+        <div class="section-title">Description</div>
+        <p class="description">{{.Episode.Overview}}</p>
+    </div>
     {{end}}
 
     {{/* Notes */}}
-    <div style="margin-bottom: var(--space-md);">
-        <h2 class="section-title">Notes</h2>
+    <div class="section">
+        <div class="section-title">Notes</div>
         <form autocomplete="off" method="post" action="/episodes/{{.Episode.ID}}/notes">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
             <textarea name="notes" rows="3" placeholder="Write notes about this episode..." style="margin-bottom: var(--space-sm);" autocomplete="off">{{.Episode.Notes}}</textarea>

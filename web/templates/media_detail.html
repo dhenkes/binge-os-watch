@@ -4,55 +4,59 @@
 
 {{define "content"}}
 <div class="page">
+    <div class="page-header">
+        <div class="breadcrumb"><a href="/">{{call .T "library.title"}}</a><span class="sep">/</span><span class="current">{{.Media.Title}}</span></div>
+        <hr class="page-header-sep">
+    </div>
+
     {{if eq .Msg "error"}}<div class="alert alert-error">An error occurred.</div>{{end}}
 
-    <div style="display: flex; gap: var(--space-md); flex-wrap: wrap;">
+    <div class="media-hero">
         {{if .Media.PosterPath}}
-        <img src="{{imgURL "w342" .Media.PosterPath}}" alt="{{.Media.Title}}" style="width: 200px; border-radius: 0.25rem;" loading="lazy">
+        <div class="media-poster">
+            <img src="{{imgURL "w342" .Media.PosterPath}}" alt="{{.Media.Title}}" loading="lazy">
+        </div>
         {{end}}
-        <div style="flex: 1; min-width: 16rem;">
-            <h1 class="page-title">{{.Media.Title}} <span class="text-muted">({{year .Media.ReleaseDate}})</span></h1>
-
-            <p>
-                <span class="badge {{statusBadge .Media.Status}}">{{call .T (statusLabel .Media.Status)}}</span>
-                {{if .Media.Refreshing}}<span class="badge badge-refreshing" title="Fetching full details from TMDB…">refreshing…</span>{{end}}
-            </p>
-
-            {{/* Status change */}}
-            <form autocomplete="off" method="post" action="/media/{{.Media.ID}}/set-status" style="margin: var(--space-sm) 0;">
-                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
-                <select name="status" style="width: auto;">
-                    <option value="plan_to_watch"{{if eq (print .Media.Status) "plan_to_watch"}} selected{{end}}>{{call .T "media.plan_to_watch"}}</option>
-                    <option value="watching"{{if eq (print .Media.Status) "watching"}} selected{{end}}>{{call .T "media.watching"}}</option>
-                    <option value="watched"{{if eq (print .Media.Status) "watched"}} selected{{end}}>{{call .T "media.watched"}}</option>
-                    <option value="on_hold"{{if eq (print .Media.Status) "on_hold"}} selected{{end}}>{{call .T "media.on_hold"}}</option>
-                    <option value="dropped"{{if eq (print .Media.Status) "dropped"}} selected{{end}}>{{call .T "media.dropped"}}</option>
-                </select>
-                <button type="submit" class="btn">{{call .T "action.save"}}</button>
-            </form>
-
-            {{/* Rating */}}
-            <div style="margin: var(--space-sm) 0;">
-                {{call .T "media.rate"}}:
-                {{$mediaID := .Media.ID}}
-                {{$csrf := .CSRFToken}}
-                {{$currentScore := 0}}
-                {{if .Rating}}{{$currentScore = .Rating}}{{end}}
-                {{range seq 10}}
-                <form autocomplete="off" method="post" action="/media/{{$mediaID}}/rate" class="star-form">
-                    <input type="hidden" name="csrf_token" value="{{$csrf}}" autocomplete="off">
-                    <input type="hidden" name="score" value="{{.}}" autocomplete="off">
-                    <button type="submit" class="star-btn{{if le . $currentScore}} filled{{end}}">&#9733;</button>
-                </form>
+        <div class="media-info">
+            <ul class="item-list">
+                <li class="item"><div class="item-row"><span class="text-muted">Year</span><span>{{year .Media.ReleaseDate}}</span></div></li>
+                {{if .Media.Genres}}<li class="item"><div class="item-row"><span class="text-muted">Genres</span><span>{{.Media.Genres}}</span></div></li>{{end}}
+                <li class="item"><div class="item-row"><span class="text-muted">Status</span>
+                    <form autocomplete="off" method="post" action="/media/{{.Media.ID}}/set-status" style="display: inline-flex; gap: var(--space-xs); align-items: center;">
+                        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+                        <select name="status" style="width: auto;">
+                            <option value="plan_to_watch"{{if eq (print .Media.Status) "plan_to_watch"}} selected{{end}}>{{call .T "media.plan_to_watch"}}</option>
+                            <option value="watching"{{if eq (print .Media.Status) "watching"}} selected{{end}}>{{call .T "media.watching"}}</option>
+                            <option value="watched"{{if eq (print .Media.Status) "watched"}} selected{{end}}>{{call .T "media.watched"}}</option>
+                            <option value="on_hold"{{if eq (print .Media.Status) "on_hold"}} selected{{end}}>{{call .T "media.on_hold"}}</option>
+                            <option value="dropped"{{if eq (print .Media.Status) "dropped"}} selected{{end}}>{{call .T "media.dropped"}}</option>
+                        </select>
+                        <button type="submit" class="btn">{{call .T "action.save"}}</button>
+                    </form>
+                    {{if .Media.Refreshing}}<span class="badge badge-refreshing" title="Fetching full details from TMDB...">refreshing...</span>{{end}}
+                </div></li>
+                <li class="item"><div class="item-row"><span class="text-muted">Rating</span><span>
+                    {{$mediaID := .Media.ID}}
+                    {{$csrf := .CSRFToken}}
+                    {{$currentScore := 0}}
+                    {{if .Rating}}{{$currentScore = .Rating}}{{end}}
+                    {{range seq 10}}
+                    <form autocomplete="off" method="post" action="/media/{{$mediaID}}/rate" class="star-form">
+                        <input type="hidden" name="csrf_token" value="{{$csrf}}" autocomplete="off">
+                        <input type="hidden" name="score" value="{{.}}" autocomplete="off">
+                        <button type="submit" class="star-btn{{if le . $currentScore}} filled{{end}}">&#9733;</button>
+                    </form>
+                    {{end}}
+                </span></div></li>
+                {{if eq (print .Media.MediaType) "tv"}}
+                <li class="item"><div class="item-row"><span class="text-muted">Progress</span><span>{{.WatchedCount}} / {{.TotalEpisodes}} episodes</span></div></li>
                 {{end}}
+            </ul>
+            {{if eq (print .Media.MediaType) "tv"}}
+            <div class="progress-bar" style="margin-top: var(--space-sm);">
+                <div class="progress-fill" style="width: {{pct .WatchedCount .TotalEpisodes}}%;"></div>
             </div>
-
-            {{/* Overview */}}
-            {{if .Media.Overview}}
-            <p class="text-muted" style="margin-top: var(--space-sm);">{{.Media.Overview}}</p>
             {{end}}
-
-            {{if .Media.Genres}}<p class="text-muted text-xs" style="margin-top: var(--space-sm);">{{.Media.Genres}}</p>{{end}}
 
             {{/* Watch next for TV */}}
             {{if and (eq (print .Media.MediaType) "tv") .NextEpisode}}
@@ -63,107 +67,20 @@
                 </form>
             </div>
             {{end}}
-
-            {{/* Progress bar for TV */}}
-            {{if eq (print .Media.MediaType) "tv"}}
-            <div style="margin-top: var(--space-sm);">
-                <span class="text-muted text-xs">{{.WatchedCount}}/{{.TotalEpisodes}} episodes</span>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: {{pct .WatchedCount .TotalEpisodes}}%;"></div>
-                </div>
-            </div>
-
-            {{/* Bulk mark watched with date */}}
-            <div style="margin-top: var(--space-md);">
-                <form autocomplete="off" method="post" action="/media/{{.Media.ID}}/watch-up-to-date" style="display: flex; flex-wrap: wrap; gap: var(--space-sm); align-items: center;">
-                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
-                    <span class="text-xs text-muted">Mark watched up to:</span>
-                    <select name="season_episode" style="width: auto; font-size: var(--text-xs);">
-                        {{range .Seasons}}
-                        {{$sn := .Season.SeasonNumber}}
-                        {{range .Episodes}}
-                        <option value="{{.ID}}">S{{$sn}}E{{.EpisodeNumber}} — {{trunc 40 .Name}}</option>
-                        {{end}}
-                        {{end}}
-                    </select>
-                    <select name="date_mode" style="width: auto; font-size: var(--text-xs);">
-                        <option value="release">At release date</option>
-                        <option value="custom">Custom date</option>
-                        <option value="today">Today</option>
-                    </select>
-                    <input type="date" name="custom_date" style="width: auto; font-size: var(--text-xs);" autocomplete="off">
-                    <button type="submit" class="btn" style="font-size: var(--text-xs);">Mark watched</button>
-                </form>
-            </div>
-            {{end}}
-
-            {{/* Remove */}}
-            <div style="margin-top: var(--space-md);">
-                <details class="inline-confirm">
-                    <summary>{{call .T "action.remove"}}</summary>
-                    <form autocomplete="off" method="post" action="/media/{{.Media.ID}}/remove">
-                        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
-                        <button type="submit" class="confirm-delete">{{call .T "action.confirm"}}</button>
-                    </form>
-                </details>
-            </div>
         </div>
     </div>
 
-    {{/* Watch Providers */}}
-    <div style="margin-top: var(--space-xl);">
-        <h2 class="section-title">{{call .T "media.where_to_watch"}}</h2>
-        {{if or (and .Providers .Providers.Stream) (and .Providers .Providers.Rent) (and .Providers .Providers.Buy)}}
-        {{if .Providers.Stream}}
-        <div style="margin-bottom: var(--space-sm);">
-            <span class="text-muted text-xs">Stream:</span>
-            {{range .Providers.Stream}}
-            <span class="tag">{{.ProviderName}}</span>
-            {{end}}
-        </div>
-        {{end}}
-        {{if .Providers.Rent}}
-        <div style="margin-bottom: var(--space-sm);">
-            <span class="text-muted text-xs">Rent:</span>
-            {{range .Providers.Rent}}
-            <span class="tag">{{.ProviderName}}</span>
-            {{end}}
-        </div>
-        {{end}}
-        {{if .Providers.Buy}}
-        <div style="margin-bottom: var(--space-sm);">
-            <span class="text-muted text-xs">Buy:</span>
-            {{range .Providers.Buy}}
-            <span class="tag">{{.ProviderName}}</span>
-            {{end}}
-        </div>
-        {{end}}
-        {{if .Providers.Link}}
-        <a href="{{.Providers.Link}}" target="_blank" rel="noopener noreferrer" class="text-muted text-xs">JustWatch</a>
-        {{end}}
-        {{else}}
-        <p class="text-muted text-xs">No streaming data available for your region.</p>
-        {{end}}
+    {{/* Description */}}
+    {{if .Media.Overview}}
+    <div class="section">
+        <div class="section-title">Description</div>
+        <p class="description">{{.Media.Overview}}</p>
     </div>
-
-    {{/* Watched date */}}
-    <div style="margin-top: var(--space-md);">
-        {{if .Media.WatchedAt}}
-        <p class="text-muted text-xs" style="margin-bottom: var(--space-xs);">Last watched {{fmtDate .Media.WatchedAt}}</p>
-        {{end}}
-        {{if eq .Media.MediaType "movie"}}
-        <form autocomplete="off" method="post" action="/media/{{.Media.ID}}/watched-at" style="display: flex; gap: var(--space-sm); align-items: center;">
-            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
-            <label class="text-xs text-muted">Set date:</label>
-            <input type="date" name="watched_at" value="{{if .Media.WatchedAt}}{{.Media.WatchedAt.Format "2006-01-02"}}{{end}}" style="width: auto;" autocomplete="off">
-            <button type="submit" class="btn" style="font-size: var(--text-xs);">Save</button>
-        </form>
-        {{end}}
-    </div>
+    {{end}}
 
     {{/* Tags */}}
-    <div style="margin-top: var(--space-xl);">
-        <h2 class="section-title">Tags</h2>
+    <div class="section">
+        <div class="section-title">Tags</div>
         {{if .MediaTags}}
         <ul class="item-list" style="margin-bottom: var(--space-sm);">
             {{range .MediaTags}}
@@ -181,7 +98,7 @@
         </ul>
         {{end}}
         {{if .AllTags}}
-        <form autocomplete="off" method="post" action="/media/{{.Media.ID}}/tags/add" style="display: flex; gap: var(--space-sm); align-items: center;">
+        <form autocomplete="off" method="post" action="/media/{{.Media.ID}}/tags/add" class="form-actions">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
             <select name="tag_id" style="width: auto;">
                 <option value="">{{call .T "tags.add"}}...</option>
@@ -194,9 +111,9 @@
         {{end}}
     </div>
 
-    {{/* Notes / Review */}}
-    <div style="margin-top: var(--space-xl);">
-        <h2 class="section-title">Notes</h2>
+    {{/* Notes */}}
+    <div class="section">
+        <div class="section-title">Notes</div>
         <form autocomplete="off" method="post" action="/media/{{.Media.ID}}/notes">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
             <textarea name="notes" rows="3" placeholder="Write a review or personal notes..." style="margin-bottom: var(--space-sm);" autocomplete="off">{{.Media.Notes}}</textarea>
@@ -204,84 +121,135 @@
         </form>
     </div>
 
+    {{/* Watch Providers */}}
+    <div class="section">
+        <div class="section-title">{{call .T "media.where_to_watch"}}</div>
+        {{if or (and .Providers .Providers.Stream) (and .Providers .Providers.Rent) (and .Providers .Providers.Buy)}}
+        <ul class="item-list">
+            {{if .Providers.Stream}}
+            {{range .Providers.Stream}}
+            <li class="item"><div class="item-row"><span>{{.ProviderName}}</span><span class="tag">stream</span></div></li>
+            {{end}}
+            {{end}}
+            {{if .Providers.Rent}}
+            {{range .Providers.Rent}}
+            <li class="item"><div class="item-row"><span>{{.ProviderName}}</span><span class="tag">rent</span></div></li>
+            {{end}}
+            {{end}}
+            {{if .Providers.Buy}}
+            {{range .Providers.Buy}}
+            <li class="item"><div class="item-row"><span>{{.ProviderName}}</span><span class="tag">buy</span></div></li>
+            {{end}}
+            {{end}}
+        </ul>
+        {{if .Providers.Link}}
+        <a href="{{.Providers.Link}}" target="_blank" rel="noopener noreferrer" class="text-muted text-sm" style="margin-top: var(--space-xs); display: inline-block;">JustWatch</a>
+        {{end}}
+        {{else}}
+        <p class="text-muted">No streaming data available for your region.</p>
+        {{end}}
+    </div>
+
+    {{/* Watch history */}}
+    {{if or .Media.WatchedAt (eq .Media.MediaType "movie")}}
+    <div class="section">
+        <div class="section-title">Watch history</div>
+        {{if .Media.WatchedAt}}
+        <ul class="item-list" style="margin-bottom: var(--space-sm);">
+            <li class="item"><div class="item-row"><span class="text-muted">Last watched</span><span>{{fmtDate .Media.WatchedAt}}</span></div></li>
+        </ul>
+        {{end}}
+        {{if eq .Media.MediaType "movie"}}
+        <form autocomplete="off" method="post" action="/media/{{.Media.ID}}/watched-at" class="form-actions">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+            <label class="text-muted">Set date:</label>
+            <input type="date" name="watched_at" value="{{if .Media.WatchedAt}}{{.Media.WatchedAt.Format "2006-01-02"}}{{end}}" style="width: auto;" autocomplete="off">
+            <button type="submit" class="btn">Save</button>
+        </form>
+        {{end}}
+    </div>
+    {{end}}
+
+    {{/* Bulk mark watched with date (TV only) */}}
+    {{if eq (print .Media.MediaType) "tv"}}
+    <div class="section">
+        <form autocomplete="off" method="post" action="/media/{{.Media.ID}}/watch-up-to-date" class="form-actions">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+            <span class="text-muted">Mark watched up to:</span>
+            <select name="season_episode" style="width: auto;">
+                {{range .Seasons}}
+                {{$sn := .Season.SeasonNumber}}
+                {{range .Episodes}}
+                <option value="{{.ID}}">S{{$sn}}E{{.EpisodeNumber}} — {{trunc 40 .Name}}</option>
+                {{end}}
+                {{end}}
+            </select>
+            <select name="date_mode" style="width: auto;">
+                <option value="release">At release date</option>
+                <option value="custom">Custom date</option>
+                <option value="today">Today</option>
+            </select>
+            <input type="date" name="custom_date" style="width: auto;" autocomplete="off">
+            <button type="submit" class="btn">Mark watched</button>
+        </form>
+    </div>
+    {{end}}
+
     {{/* Seasons & Episodes (TV only) */}}
     {{if .Seasons}}
-    <div style="margin-top: var(--space-xl);">
-        <h2 class="section-title">Seasons</h2>
+    <div class="section">
         {{$csrf := .CSRFToken}}
         {{$mediaID := .Media.ID}}
         {{range .Seasons}}
-        <details style="margin-bottom: var(--space-sm); border: 1px solid var(--border); border-radius: 0.25rem;">
-            <summary style="padding: var(--space-sm); cursor: pointer; display: flex; align-items: center; gap: var(--space-sm);">
-                <strong>{{.Season.Name}}</strong>
-                <span class="text-muted text-xs">{{.Season.WatchedCount}}/{{.Season.EpisodeCount}} episodes</span>
-                <div class="progress-bar" style="width: 6rem;">
-                    <div class="progress-fill" style="width: {{pct .Season.WatchedCount .Season.EpisodeCount}}%;"></div>
-                </div>
-                {{if .Season.UserRating}}<span class="text-xs" style="color: #f5c518;">&#9733; {{derefInt .Season.UserRating}}</span>{{end}}
+        <details class="season-toggle">
+            <summary>
+                <span>{{.Season.Name}}</span>
+                <span class="season-meta">
+                    <span class="progress-bar" style="display: inline-block; width: 4rem; vertical-align: middle; margin-top: 0;"><span class="progress-fill" style="width: {{pct .Season.WatchedCount .Season.EpisodeCount}}%;"></span></span>
+                    {{.Season.WatchedCount}}/{{.Season.EpisodeCount}} · {{pct .Season.WatchedCount .Season.EpisodeCount}}%
+                    {{if .Season.UserRating}}<span class="star-gold">&#9733; {{derefInt .Season.UserRating}}</span>{{end}}
+                </span>
             </summary>
-            <div style="padding: var(--space-sm);">
-                {{/* Season actions */}}
-                <div style="margin-bottom: var(--space-sm); display: flex; gap: var(--space-sm); align-items: center;">
-                    <form autocomplete="off" method="post" action="/seasons/{{.Season.ID}}/watch-all" class="inline-action">
-                        <input type="hidden" name="csrf_token" value="{{$csrf}}" autocomplete="off">
-                        <input type="hidden" name="return_to" value="/media/{{$mediaID}}" autocomplete="off">
-                        <button type="submit" class="btn" style="font-size: var(--text-xs);">{{call $.T "media.mark_watched"}}</button>
-                    </form>
-                    {{/* Season rating */}}
-                    {{$seasonID := .Season.ID}}
-                    {{$sRating := 0}}
-                    {{if .Season.UserRating}}{{$sRating = derefInt .Season.UserRating}}{{end}}
-                    {{range seq 10}}
-                    <form autocomplete="off" method="post" action="/seasons/{{$seasonID}}/rate" class="star-form">
-                        <input type="hidden" name="csrf_token" value="{{$csrf}}" autocomplete="off">
-                        <input type="hidden" name="score" value="{{.}}" autocomplete="off">
-                        <input type="hidden" name="return_to" value="/media/{{$mediaID}}" autocomplete="off">
-                        <button type="submit" class="star-btn{{if le . $sRating}} filled{{end}}" style="font-size: var(--text-sm);">&#9733;</button>
-                    </form>
-                    {{end}}
-                </div>
-
-                {{/* Episode list */}}
-                <ul class="item-list">
-                    {{range .Episodes}}
-                    <li class="item" style="display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap;">
-                        {{/* Watch toggle */}}
+            <div class="form-actions" style="margin-bottom: var(--space-sm); padding-top: var(--space-xs);">
+                <form autocomplete="off" method="post" action="/seasons/{{.Season.ID}}/watch-all">
+                    <input type="hidden" name="csrf_token" value="{{$csrf}}" autocomplete="off">
+                    <input type="hidden" name="return_to" value="/media/{{$mediaID}}" autocomplete="off">
+                    <button type="submit" class="inline-btn">Watch all</button>
+                </form>
+                {{$seasonID := .Season.ID}}
+                {{$sRating := 0}}
+                {{if .Season.UserRating}}{{$sRating = derefInt .Season.UserRating}}{{end}}
+                {{range seq 10}}
+                <form autocomplete="off" method="post" action="/seasons/{{$seasonID}}/rate" class="star-form">
+                    <input type="hidden" name="csrf_token" value="{{$csrf}}" autocomplete="off">
+                    <input type="hidden" name="score" value="{{.}}" autocomplete="off">
+                    <input type="hidden" name="return_to" value="/media/{{$mediaID}}" autocomplete="off">
+                    <button type="submit" class="star-btn{{if le . $sRating}} filled{{end}}" style="font-size: var(--text-sm);">&#9733;</button>
+                </form>
+                {{end}}
+            </div>
+            <table class="ep-table">
+                {{range .Episodes}}
+                <tr>
+                    <td class="ep-check">
                         {{if .Watched}}
-                        <form autocomplete="off" method="post" action="/episodes/{{.ID}}/unwatch" class="inline-action">
+                        <form autocomplete="off" method="post" action="/episodes/{{.ID}}/unwatch">
                             <input type="hidden" name="csrf_token" value="{{$csrf}}" autocomplete="off">
                             <input type="hidden" name="return_to" value="/media/{{$mediaID}}" autocomplete="off">
-                            <button type="submit" class="inline-btn" title="Unwatch" style="font-size: var(--text-base); color: var(--success);">&#10003;</button>
+                            <button type="submit" class="inline-btn" title="Unwatch" style="color: var(--success);">&#10003;</button>
                         </form>
                         {{else}}
-                        <form autocomplete="off" method="post" action="/episodes/{{.ID}}/watch" class="inline-action">
+                        <form autocomplete="off" method="post" action="/episodes/{{.ID}}/watch">
                             <input type="hidden" name="csrf_token" value="{{$csrf}}" autocomplete="off">
                             <input type="hidden" name="return_to" value="/media/{{$mediaID}}" autocomplete="off">
-                            <button type="submit" class="inline-btn" title="Watch" style="font-size: var(--text-base);">&#9675;</button>
+                            <button type="submit" class="inline-btn" title="Watch">&#9675;</button>
                         </form>
                         {{end}}
-
-                        <span style="min-width: 2rem;" class="text-xs text-muted">E{{.EpisodeNumber}}</span>
-                        <a href="/episodes/{{.ID}}" style="flex: 1;">{{.Name}}</a>
-                        <span class="text-xs text-muted">{{fmtDate .AirDate}}</span>
-                        {{if .RuntimeMinutes}}<span class="text-xs text-muted">{{.RuntimeMinutes}}m</span>{{end}}
-                        {{if .WatchedAt}}<span class="text-xs text-muted">watched {{fmtDate .WatchedAt}}</span>{{end}}
-
-                        {{if not .Watched}}
-                        <form autocomplete="off" method="post" action="/episodes/{{.ID}}/watch-up-to" class="inline-action">
-                            <input type="hidden" name="csrf_token" value="{{$csrf}}" autocomplete="off">
-                            <input type="hidden" name="return_to" value="/media/{{$mediaID}}" autocomplete="off">
-                            <button type="submit" class="inline-btn" title="Watch all up to here">&#9654; up to here</button>
-                        </form>
-                        {{else}}
-                        <form autocomplete="off" method="post" action="/episodes/{{.ID}}/unwatch-up-to" class="inline-action">
-                            <input type="hidden" name="csrf_token" value="{{$csrf}}" autocomplete="off">
-                            <input type="hidden" name="return_to" value="/media/{{$mediaID}}" autocomplete="off">
-                            <button type="submit" class="inline-btn" title="Unwatch all up to here">&#9664; unwatch up to here</button>
-                        </form>
-                        {{end}}
-
-                        {{/* Episode rating */}}
+                    </td>
+                    <td class="ep-title"><a href="/episodes/{{.ID}}">E{{.EpisodeNumber}} · {{.Name}}</a></td>
+                    <td class="ep-runtime">{{if .RuntimeMinutes}}{{.RuntimeMinutes}}m{{end}}</td>
+                    <td class="ep-date">{{fmtDate .AirDate}}</td>
+                    <td class="ep-rating">
                         {{$epID := .ID}}
                         {{$epRating := 0}}
                         {{if .UserRating}}{{$epRating = derefInt .UserRating}}{{end}}
@@ -290,22 +258,47 @@
                             <input type="hidden" name="csrf_token" value="{{$csrf}}" autocomplete="off">
                             <input type="hidden" name="score" value="{{.}}" autocomplete="off">
                             <input type="hidden" name="return_to" value="/media/{{$mediaID}}" autocomplete="off">
-                            <button type="submit" class="star-btn{{if le . $epRating}} filled{{end}}" style="font-size: var(--text-xs);">&#9733;</button>
+                            <button type="submit" class="star-btn{{if le . $epRating}} filled{{end}}">&#9733;</button>
                         </form>
                         {{end}}
-                    </li>
-                    {{end}}
-                </ul>
-            </div>
+                    </td>
+                    <td class="ep-action">
+                        {{if not .Watched}}
+                        <form autocomplete="off" method="post" action="/episodes/{{.ID}}/watch-up-to">
+                            <input type="hidden" name="csrf_token" value="{{$csrf}}" autocomplete="off">
+                            <input type="hidden" name="return_to" value="/media/{{$mediaID}}" autocomplete="off">
+                            <button type="submit" class="inline-btn" title="Watch all up to here">&#9654;</button>
+                        </form>
+                        {{else}}
+                        <form autocomplete="off" method="post" action="/episodes/{{.ID}}/unwatch-up-to">
+                            <input type="hidden" name="csrf_token" value="{{$csrf}}" autocomplete="off">
+                            <input type="hidden" name="return_to" value="/media/{{$mediaID}}" autocomplete="off">
+                            <button type="submit" class="inline-btn" title="Unwatch all up to here">&#9664;</button>
+                        </form>
+                        {{end}}
+                    </td>
+                </tr>
+                {{end}}
+            </table>
         </details>
         {{end}}
     </div>
     {{end}}
 
+    {{/* Remove */}}
+    <div class="section">
+        <details class="inline-confirm"><summary>{{call .T "action.remove"}}</summary>
+            <form autocomplete="off" method="post" action="/media/{{.Media.ID}}/remove">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+                <button type="submit" class="confirm-delete">{{call .T "action.confirm"}}</button>
+            </form>
+        </details>
+    </div>
+
     {{/* Recommendations */}}
     {{if .Recommendations}}
-    <div style="margin-top: var(--space-xl);">
-        <h2 class="section-title">Recommendations</h2>
+    <div class="section">
+        <div class="section-title">Recommendations</div>
         <div class="card-grid">
             {{range .Recommendations}}
             <div class="card">
@@ -332,9 +325,7 @@
                 <div class="card-body">
                     <a href="/preview?tmdb_id={{.TMDBID}}&type={{.MediaType}}" class="card-title">{{.Title}}</a>
                     <div class="card-meta">{{year .ReleaseDate}}</div>
-                </div>
-                <div class="card-actions">
-                    <form autocomplete="off" method="post" action="/discover/add">
+                    <form autocomplete="off" method="post" action="/discover/add" style="margin-top: var(--space-xs);">
                         <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
                         <input type="hidden" name="tmdb_id" value="{{.TMDBID}}" autocomplete="off">
                         <input type="hidden" name="media_type" value="{{.MediaType}}" autocomplete="off">
@@ -343,7 +334,7 @@
                         <input type="hidden" name="stub_poster" value="{{.PosterPath}}" autocomplete="off">
                         <input type="hidden" name="stub_release_date" value="{{.ReleaseDate}}" autocomplete="off">
                         <input type="hidden" name="return_to" value="/media/{{$.Media.ID}}" autocomplete="off">
-                        <button type="submit" class="btn" style="font-size: var(--text-xs); width: 100%;">{{call $.T "media.add_to_lib"}}</button>
+                        <button type="submit" class="btn" style="width: 100%;">{{call $.T "media.add_to_lib"}}</button>
                     </form>
                 </div>
                 {{end}}

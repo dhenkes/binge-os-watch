@@ -4,14 +4,16 @@
 
 {{define "content"}}
 <div class="page">
-    <div class="settings-page">
-        <h1 class="page-title">{{call .T "logout.title"}}</h1>
-        <p>{{call .T "logout.confirm"}}</p>
-        <form autocomplete="off" method="post" action="/logout" style="margin-top: var(--space-md);">
-            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
-            <button type="submit" class="btn btn-primary">{{call .T "logout.yes"}}</button>
-            <a href="/" class="btn" style="margin-left: var(--space-sm);">{{call .T "action.cancel"}}</a>
-        </form>
+    <div class="page-header">
+        <div class="breadcrumb"><span class="current">{{call .T "logout.title"}}</span></div>
+        <hr class="page-header-sep">
     </div>
+
+    <p>{{call .T "logout.confirm"}}</p>
+    <form autocomplete="off" method="post" action="/logout" style="margin-top: var(--space-md);">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+        <button type="submit" class="btn btn-primary">{{call .T "logout.yes"}}</button>
+        <a href="/" class="btn" style="margin-left: var(--space-sm);">{{call .T "action.cancel"}}</a>
+    </form>
 </div>
 {{end}}

@@ -4,65 +4,30 @@
 
 {{define "content"}}
 <div class="page">
-    <h1 class="page-title">Webhooks <span class="count">({{len .Webhooks}})</span></h1>
-
-    <div class="dashboard-links">
-        <a href="/settings">&larr; Back to settings</a>
+    <div class="page-header">
+        <div class="breadcrumb"><a href="/settings">{{call .T "settings.title"}}</a><span class="sep">/</span><span class="current">Webhooks <span class="count">({{len .Webhooks}})</span></span></div>
+        <div class="page-header-row">
+            <div class="filter-bar">
+                <a href="/webhooks/new-type">New</a>
+            </div>
+        </div>
+        <hr class="page-header-sep">
     </div>
 
     {{if eq .Msg "webhook_error"}}<div class="alert alert-error">Invalid webhook URL. Must be a valid http or https URL.</div>{{end}}
-
-    <div class="settings-block">
-        <h2>New webhook</h2>
-        <form autocomplete="off" method="post" action="/webhooks/new">
-            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
-            <div class="settings-row">
-                <label>Name</label>
-                <input type="text" name="name" placeholder="My Discord notifications" required autocomplete="off">
-            </div>
-            <div class="settings-row">
-                <label>Service</label>
-                <select name="service">
-                    <option value="generic">Generic JSON</option>
-                    <option value="discord">Discord</option>
-                    <option value="slack">Slack</option>
-                    <option value="ntfy">ntfy</option>
-                    <option value="custom">Custom (template)</option>
-                </select>
-            </div>
-            <div class="settings-row">
-                <label>URL</label>
-                <input type="url" name="url" placeholder="https://example.com/webhook" required autocomplete="off">
-            </div>
-            <div class="settings-row">
-                <label>Events</label>
-                <label style="display: block; font-size: var(--text-xs); margin-bottom: var(--space-xs);"><input type="checkbox" name="events" value="added" checked style="width: auto; margin-right: var(--space-xs);" autocomplete="off"> Added to library</label>
-                <label style="display: block; font-size: var(--text-xs); margin-bottom: var(--space-xs);"><input type="checkbox" name="events" value="status_changed" checked style="width: auto; margin-right: var(--space-xs);" autocomplete="off"> Status changed</label>
-                <label style="display: block; font-size: var(--text-xs); margin-bottom: var(--space-xs);"><input type="checkbox" name="events" value="watched" checked style="width: auto; margin-right: var(--space-xs);" autocomplete="off"> Marked as watched</label>
-                <label style="display: block; font-size: var(--text-xs); margin-bottom: var(--space-xs);"><input type="checkbox" name="events" value="episode_watched" style="width: auto; margin-right: var(--space-xs);" autocomplete="off"> Episode watched</label>
-                <label style="display: block; font-size: var(--text-xs); margin-bottom: var(--space-xs);"><input type="checkbox" name="events" value="released" style="width: auto; margin-right: var(--space-xs);" autocomplete="off"> Released (from upcoming)</label>
-            </div>
-            <div class="settings-row">
-                <label>Body template <span class="text-muted text-xs">(custom only — variables: {{`{{.Title}} {{.Status}} {{.MediaType}} {{.MediaID}} {{.Event}}`}})</span></label>
-                <textarea name="body_template" rows="3" placeholder='{"text":"{{`{{.Title}}`}} is now {{`{{.Status}}`}}"}' autocomplete="off"></textarea>
-            </div>
-            <div class="settings-row">
-                <label>Custom headers <span class="text-muted text-xs">(JSON object, custom only)</span></label>
-                <input type="text" name="headers" placeholder='{"Authorization":"Bearer ..."}' autocomplete="off">
-            </div>
-            <button type="submit" class="btn btn-primary">Create</button>
-        </form>
-    </div>
 
     {{if .Webhooks}}
     <ul class="item-list">
         {{range .Webhooks}}
         <li class="item">
             <div class="item-row">
-                <a href="/webhooks/{{.ID}}" style="font-weight: 600;">{{.Name}} <span class="text-muted text-xs">({{.Service}})</span></a>
-                <span style="display: flex; gap: var(--space-sm); align-items: baseline;">
+                <div class="item-content">
+                    <a href="/webhooks/{{.ID}}" style="font-weight: 600;">{{.Name}}</a>
+                    <div class="item-meta">{{.Service}} · {{.Events}}</div>
+                </div>
+                <span class="item-actions">
                     <a href="/webhooks/{{.ID}}/edit" class="inline-btn">edit</a>
-                    <form autocomplete="off" method="post" action="/webhooks/{{.ID}}/test" class="inline-action">
+                    <form autocomplete="off" method="post" action="/webhooks/{{.ID}}/test" style="display: inline;">
                         <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
                         <button type="submit" class="inline-btn">test</button>
                     </form>
@@ -75,7 +40,6 @@
                     </details>
                 </span>
             </div>
-            <div class="item-meta">{{.Events}}</div>
         </li>
         {{end}}
     </ul>

@@ -31,6 +31,10 @@ func (s *TagServiceImpl) List(ctx context.Context, userID string) ([]model.Tag, 
 	return s.tags.ListByUser(ctx, userID)
 }
 
+func (s *TagServiceImpl) Update(ctx context.Context, id, name string) error {
+	return s.tags.Update(ctx, id, name)
+}
+
 func (s *TagServiceImpl) Delete(ctx context.Context, id string) error {
 	return s.tags.Delete(ctx, id)
 }

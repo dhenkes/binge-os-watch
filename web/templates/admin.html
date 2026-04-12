@@ -4,19 +4,27 @@
 
 {{define "content"}}
 <div class="page">
-    <h1 class="page-title">{{call .T "nav.admin"}}</h1>
-
-    <div class="dashboard-links">
-        <a href="/admin?tab=users"{{if eq .Tab "users"}} class="active"{{end}}>{{call .T "admin.users_title"}}</a>
-        <span class="sep">|</span>
-        <a href="/admin?tab=stats"{{if eq .Tab "stats"}} class="active"{{end}}>{{call .T "admin.stats_title"}}</a>
-        <span class="sep">|</span>
-        <a href="/admin?tab=tmdb_jobs"{{if eq .Tab "tmdb_jobs"}} class="active"{{end}}>TMDB jobs</a>
+    <div class="page-header">
+        <div class="breadcrumb"><span class="current">{{call .T "nav.admin"}}</span></div>
+        <div class="page-header-row">
+            <div class="filter-bar">
+                <a href="/admin?tab=users"{{if eq .Tab "users"}} class="active"{{end}}>{{call .T "admin.users_title"}}</a>
+                <a href="/admin?tab=stats"{{if eq .Tab "stats"}} class="active"{{end}}>{{call .T "admin.stats_title"}}</a>
+                <a href="/admin?tab=tmdb_jobs"{{if eq .Tab "tmdb_jobs"}} class="active"{{end}}>TMDB jobs</a>
+                {{if eq .Tab "users"}}
+                <span class="sep">|</span>
+                <a href="/admin?tab=users"{{if not .Filter}} class="active"{{end}}>All</a>
+                <a href="/admin?tab=users&filter=user"{{if eq .Filter "user"}} class="active"{{end}}>User</a>
+                <a href="/admin?tab=users&filter=admin"{{if eq .Filter "admin"}} class="active"{{end}}>Admin</a>
+                {{end}}
+            </div>
+        </div>
+        <hr class="page-header-sep">
     </div>
 
     {{if eq .Tab "tmdb_jobs"}}
 
-    <p class="text-muted text-xs" style="margin-bottom: var(--space-md);">
+    <p class="text-muted" style="margin-bottom: var(--space-md);">
         Pending: <strong>{{.TMDBJobsPending}}</strong> ·
         Running: <strong>{{.TMDBJobsRunning}}</strong> ·
         Failed: <strong>{{.TMDBJobsFailed}}</strong>
@@ -32,7 +40,7 @@
                     <span class="count">({{.Status}})</span>
                 </div>
                 <div style="display: flex; gap: var(--space-sm); align-items: baseline;">
-                    <form autocomplete="off" method="post" action="/admin/tmdb-jobs/retry" class="inline-action">
+                    <form autocomplete="off" method="post" action="/admin/tmdb-jobs/retry">
                         <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
                         <input type="hidden" name="job_id" value="{{.ID}}" autocomplete="off">
                         <button type="submit" class="inline-btn">retry</button>
@@ -48,11 +56,11 @@
                 </div>
             </div>
             <div class="item-meta">
-                <code class="text-xs">{{.Payload}}</code>
+                <code>{{.Payload}}</code>
                 {{if .Error}}
-                <div class="text-xs" style="color: var(--error-text); margin-top: var(--space-xs);">{{.Error}}</div>
+                <div class="text-error" style="margin-top: var(--space-xs);">{{.Error}}</div>
                 {{end}}
-                <div class="text-xs" style="margin-top: var(--space-xs);">Created {{fmtDate .CreatedAt}}{{if .StartedAt}} · Started {{fmtDate .StartedAt}}{{end}}</div>
+                <div class="text-sm" style="margin-top: var(--space-xs);">Created {{fmtDate .CreatedAt}}{{if .StartedAt}} · Started {{fmtDate .StartedAt}}{{end}}</div>
             </div>
         </li>
         {{end}}
@@ -63,8 +71,8 @@
 
     {{else if eq .Tab "stats"}}
 
-    <div class="dashboard-section">
-        <h2 class="section-title">Totals</h2>
+    <div class="section">
+        <div class="section-title">Totals</div>
         <ul class="item-list">
             <li class="item item-row"><span>Users</span> <span class="count">{{.AdminStats.TotalUsers}}</span></li>
             <li class="item item-row"><span>{{call .T "stats.total_movies"}}</span> <span class="count">{{.GlobalStats.TotalMovies}}</span></li>
@@ -74,8 +82,8 @@
         </ul>
     </div>
 
-    <div class="dashboard-section">
-        <h2 class="section-title">Active Users</h2>
+    <div class="section">
+        <div class="section-title">Active Users</div>
         <ul class="item-list">
             <li class="item item-row"><span>Today</span> <span class="count">{{.AdminStats.ActiveUsersDay}}</span></li>
             <li class="item item-row"><span>This week</span> <span class="count">{{.AdminStats.ActiveUsersWeek}}</span></li>
@@ -83,8 +91,8 @@
         </ul>
     </div>
 
-    <div class="dashboard-section">
-        <h2 class="section-title">New Media Added</h2>
+    <div class="section">
+        <div class="section-title">New Media Added</div>
         <ul class="item-list">
             <li class="item item-row"><span>Today</span> <span class="count">{{.AdminStats.NewMediaDay}}</span></li>
             <li class="item item-row"><span>This week</span> <span class="count">{{.AdminStats.NewMediaWeek}}</span></li>
@@ -93,13 +101,6 @@
     </div>
 
     {{else}}
-
-    <div class="sort-bar">
-        Filter:
-        <a href="/admin?tab=users"{{if not .Filter}} class="active"{{end}}>All</a>
-        <a href="/admin?tab=users&filter=user"{{if eq .Filter "user"}} class="active"{{end}}>User</a>
-        <a href="/admin?tab=users&filter=admin"{{if eq .Filter "admin"}} class="active"{{end}}>Admin</a>
-    </div>
 
     {{if .Users}}
     <ul class="item-list">
@@ -113,7 +114,7 @@
                 {{with index $.LastActive .ID}}<span class="sep">|</span><span>Last active {{fmtDate .}}</span>{{end}}
                 {{if ne .ID $.CurrentUserID}}
                 <span class="sep">|</span>
-                <form autocomplete="off" method="post" action="/admin/role" class="inline-action">
+                <form autocomplete="off" method="post" action="/admin/role" style="display: inline;">
                     <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
                     <input type="hidden" name="user_id" value="{{.ID}}" autocomplete="off">
                     <input type="hidden" name="role" value="{{if eq .Role "admin"}}user{{else}}admin{{end}}" autocomplete="off">

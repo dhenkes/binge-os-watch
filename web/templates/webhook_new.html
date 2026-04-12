@@ -1,0 +1,46 @@
+{{template "layout" .}}
+
+{{define "title"}}New webhook — binge-os-watch{{end}}
+
+{{define "content"}}
+<div class="page">
+    <div class="page-header">
+        <div class="breadcrumb"><a href="/settings">{{call .T "settings.title"}}</a><span class="sep">/</span><a href="/webhooks">Webhooks</a><span class="sep">/</span><a href="/webhooks/new-type">New</a><span class="sep">/</span><span class="current">{{.ServiceLabel}}</span></div>
+        <hr class="page-header-sep">
+    </div>
+
+    {{if eq .Msg "webhook_error"}}<div class="alert alert-error">Invalid webhook URL. Must be a valid http or https URL.</div>{{end}}
+
+    <form autocomplete="off" method="post" action="/webhooks/new">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+        <input type="hidden" name="service" value="{{.Service}}" autocomplete="off">
+        <div class="settings-row">
+            <label>Name</label>
+            <input type="text" name="name" placeholder="My {{.ServiceLabel}} notifications" required autocomplete="off">
+        </div>
+        <div class="settings-row">
+            <label>URL</label>
+            <input type="url" name="url" placeholder="https://example.com/webhook" required autocomplete="off">
+        </div>
+        <div class="settings-row">
+            <label>Events</label>
+            <label class="checkbox-label"><input type="checkbox" name="events" value="added" checked autocomplete="off"> Added to library</label>
+            <label class="checkbox-label"><input type="checkbox" name="events" value="status_changed" checked autocomplete="off"> Status changed</label>
+            <label class="checkbox-label"><input type="checkbox" name="events" value="watched" checked autocomplete="off"> Marked as watched</label>
+            <label class="checkbox-label"><input type="checkbox" name="events" value="episode_watched" autocomplete="off"> Episode watched</label>
+            <label class="checkbox-label"><input type="checkbox" name="events" value="released" autocomplete="off"> Released (from upcoming)</label>
+        </div>
+        {{if or (eq .Service "generic") (eq .Service "custom")}}
+        <div class="settings-row">
+            <label>Body template <span class="text-muted text-sm">(optional — variables: {{`{{.Title}} {{.Status}} {{.MediaType}} {{.MediaID}} {{.Event}}`}})</span></label>
+            <textarea name="body_template" rows="3" placeholder='{"text":"{{`{{.Title}}`}} is now {{`{{.Status}}`}}"}' autocomplete="off"></textarea>
+        </div>
+        <div class="settings-row">
+            <label>Custom headers <span class="text-muted text-sm">(JSON object, optional)</span></label>
+            <input type="text" name="headers" placeholder='{"Authorization":"Bearer ..."}' autocomplete="off">
+        </div>
+        {{end}}
+        <button type="submit" class="btn btn-primary">Create</button>
+    </form>
+</div>
+{{end}}

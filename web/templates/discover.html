@@ -4,19 +4,28 @@
 
 {{define "content"}}
 <div class="page">
-    <h1 class="page-title">{{call .T "discover.title"}}</h1>
-
-    <div class="filter-bar">
-        <a href="/discover?tab=trending"{{if eq .Tab "trending"}} class="active"{{end}}>{{call .T "discover.trending"}}</a>
-        <a href="/discover?tab=popular"{{if eq .Tab "popular"}} class="active"{{end}}>{{call .T "discover.popular"}}</a>
-        <a href="/discover?tab=recommendations"{{if eq .Tab "recommendations"}} class="active"{{end}}>{{call .T "discover.recommendations"}}</a>
+    <div class="page-header">
+        <div class="breadcrumb"><span class="current">{{call .T "discover.title"}}</span></div>
+        <div class="page-header-row">
+            <div class="filter-bar">
+                <a href="/discover?tab=trending"{{if eq .Tab "trending"}} class="active"{{end}}>{{call .T "discover.trending"}}</a>
+                <a href="/discover?tab=popular"{{if eq .Tab "popular"}} class="active"{{end}}>{{call .T "discover.popular"}}</a>
+                <a href="/discover?tab=recommendations"{{if eq .Tab "recommendations"}} class="active"{{end}}>{{call .T "discover.recommendations"}}</a>
+                {{if eq .Tab "trending"}}
+                <span class="sep">|</span>
+                <a href="/discover?tab=trending&type=movie"{{if eq .TrendingType "movie"}} class="active"{{end}}>{{call .T "media.movie"}}</a>
+                <a href="/discover?tab=trending&type=tv"{{if eq .TrendingType "tv"}} class="active"{{end}}>{{call .T "media.tv"}}</a>
+                {{else if eq .Tab "popular"}}
+                <span class="sep">|</span>
+                <a href="/discover?tab=popular&type=movie"{{if eq (print .PopularType) "movie"}} class="active"{{end}}>{{call .T "media.movie"}}</a>
+                <a href="/discover?tab=popular&type=tv"{{if eq (print .PopularType) "tv"}} class="active"{{end}}>{{call .T "media.tv"}}</a>
+                {{end}}
+            </div>
+        </div>
+        <hr class="page-header-sep">
     </div>
 
     {{if eq .Tab "trending"}}
-        <div class="filter-bar">
-            <a href="/discover?tab=trending&type=movie"{{if eq .TrendingType "movie"}} class="active"{{end}}>{{call .T "media.movie"}}</a>
-            <a href="/discover?tab=trending&type=tv"{{if eq .TrendingType "tv"}} class="active"{{end}}>{{call .T "media.tv"}}</a>
-        </div>
         {{if .TrendingItems}}
         <div class="card-grid">
             {{range .TrendingItems}}
@@ -26,10 +35,6 @@
         {{end}}
 
     {{else if eq .Tab "popular"}}
-        <div class="filter-bar">
-            <a href="/discover?tab=popular&type=movie"{{if eq (print .PopularType) "movie"}} class="active"{{end}}>{{call .T "media.movie"}}</a>
-            <a href="/discover?tab=popular&type=tv"{{if eq (print .PopularType) "tv"}} class="active"{{end}}>{{call .T "media.tv"}}</a>
-        </div>
         {{if .Popular}}
         <div class="card-grid">
             {{range .Popular.Items}}
@@ -37,7 +42,7 @@
             {{end}}
         </div>
         {{if gt .Popular.TotalPages 1}}
-        <div class="load-more" style="display: flex; gap: var(--space-sm);">
+        <div style="padding: var(--space-md) 0; display: flex; gap: var(--space-sm);">
             {{if gt .PopularPage 1}}
             <a href="/discover?tab=popular&type={{.PopularType}}&page={{add .PopularPage -1}}" class="btn">Prev</a>
             {{end}}
@@ -52,18 +57,24 @@
     {{else if eq .Tab "recommendations"}}
         {{if .NextRecommendation}}
         {{with .NextRecommendation}}
-        <div style="display: flex; gap: var(--space-md); flex-wrap: wrap;">
+        <div class="media-hero">
             {{if .PosterPath}}
-            <a href="/preview?tmdb_id={{.TMDBID}}&type={{.MediaType}}">
-                <img src="{{imgURL "w342" .PosterPath}}" alt="{{.Title}}" style="width: 200px; border-radius: 0.25rem;" loading="lazy">
-            </a>
+            <div class="media-poster">
+                <a href="/preview?tmdb_id={{.TMDBID}}&type={{.MediaType}}">
+                    <img src="{{imgURL "w342" .PosterPath}}" alt="{{.Title}}" loading="lazy">
+                </a>
+            </div>
             {{end}}
-            <div style="flex: 1; min-width: 16rem;">
-                <h2 class="page-title"><a href="/preview?tmdb_id={{.TMDBID}}&type={{.MediaType}}">{{.Title}}</a> <span class="text-muted">({{year .ReleaseDate}})</span></h2>
-                <p class="text-muted text-xs" style="margin-bottom: var(--space-sm);">Recommended {{.Count}}x · {{.MediaType}}</p>
-                {{if .Overview}}<p class="text-muted" style="margin-bottom: var(--space-md);">{{.Overview}}</p>{{end}}
+            <div class="media-info">
+                <ul class="item-list">
+                    <li class="item"><div class="item-row"><span class="text-muted">Title</span><a href="/preview?tmdb_id={{.TMDBID}}&type={{.MediaType}}">{{.Title}}</a></div></li>
+                    <li class="item"><div class="item-row"><span class="text-muted">Year</span><span>{{year .ReleaseDate}}</span></div></li>
+                    <li class="item"><div class="item-row"><span class="text-muted">Type</span><span>{{.MediaType}}</span></div></li>
+                    <li class="item"><div class="item-row"><span class="text-muted">Recommended</span><span>{{.Count}}x</span></div></li>
+                </ul>
+                {{if .Overview}}<p class="description" style="margin-top: var(--space-sm);">{{.Overview}}</p>{{end}}
 
-                <div style="display: flex; gap: var(--space-sm);">
+                <div style="display: flex; gap: var(--space-sm); margin-top: var(--space-md);">
                     <form autocomplete="off" method="post" action="/discover/add">
                         <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
                         <input type="hidden" name="tmdb_id" value="{{.TMDBID}}" autocomplete="off">
@@ -84,7 +95,7 @@
                 </div>
             </div>
         </div>
-        <p class="text-muted text-xs" style="margin-top: var(--space-md);">{{$.RemainingCount}} more recommendations</p>
+        <p class="text-muted" style="margin-top: var(--space-md);">{{$.RemainingCount}} more recommendations</p>
         {{end}}
         {{else}}
         <div class="empty-state">No more recommendations. Rate more items to get new ones.</div>
@@ -120,9 +131,7 @@
     <div class="card-body">
         <a href="/preview?tmdb_id={{$item.TMDBID}}&type={{$item.MediaType}}" class="card-title">{{$item.Title}}</a>
         <div class="card-meta">{{year $item.ReleaseDate}}</div>
-    </div>
-    <div class="card-actions">
-        <form autocomplete="off" method="post" action="/discover/add">
+        <form autocomplete="off" method="post" action="/discover/add" style="margin-top: var(--space-xs);">
             <input type="hidden" name="csrf_token" value="{{$root.CSRFToken}}" autocomplete="off">
             <input type="hidden" name="tmdb_id" value="{{$item.TMDBID}}" autocomplete="off">
             <input type="hidden" name="media_type" value="{{$item.MediaType}}" autocomplete="off">
@@ -131,7 +140,7 @@
             <input type="hidden" name="stub_poster" value="{{$item.PosterPath}}" autocomplete="off">
             <input type="hidden" name="stub_release_date" value="{{$item.ReleaseDate}}" autocomplete="off">
             <input type="hidden" name="return_to" value="/discover?tab={{$root.Tab}}&type={{$root.TrendingType}}" autocomplete="off">
-            <button type="submit" class="btn" style="font-size: var(--text-xs); width: 100%;">{{call $root.T "media.add_to_lib"}}</button>
+            <button type="submit" class="btn" style="width: 100%;">{{call $root.T "media.add_to_lib"}}</button>
         </form>
     </div>
     {{end}}

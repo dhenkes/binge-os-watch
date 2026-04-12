@@ -4,16 +4,20 @@
 
 {{define "content"}}
 <div class="page">
-    <h1 class="page-title">{{call .T "keywords.suggestions"}}</h1>
-
-    <div class="dashboard-links">
-        <a href="/keywords">Manage keyword watches</a>
-        <span class="sep">|</span>
-        {{if .ShowDismissed}}
-        <a href="/suggestions">Show pending</a>
-        {{else}}
-        <a href="/suggestions?show=dismissed">Show dismissed</a>
-        {{end}}
+    <div class="page-header">
+        <div class="breadcrumb"><span class="current">{{call .T "keywords.suggestions"}}</span></div>
+        <div class="page-header-row">
+            <div class="filter-bar">
+                <a href="/keywords">Manage keyword watches</a>
+                <span class="sep">|</span>
+                {{if .ShowDismissed}}
+                <a href="/suggestions">Show pending</a>
+                {{else}}
+                <a href="/suggestions?show=dismissed">Show dismissed</a>
+                {{end}}
+            </div>
+        </div>
+        <hr class="page-header-sep">
     </div>
 
     {{if .ShowDismissed}}
@@ -35,11 +39,9 @@
                     <span class="text-muted">{{print .MediaType}}</span>
                     {{year .ReleaseDate}}
                 </div>
-            </div>
-            <div class="card-actions">
-                <form autocomplete="off" method="post" action="/suggestions/{{.ID}}/restore" style="width: 100%;">
+                <form autocomplete="off" method="post" action="/suggestions/{{.ID}}/restore" style="margin-top: var(--space-xs); width: 100%;">
                     <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
-                    <button type="submit" class="btn" style="font-size: var(--text-xs); width: 100%;">Restore</button>
+                    <button type="submit" class="btn" style="width: 100%;">Restore</button>
                 </form>
             </div>
         </div>
@@ -69,29 +71,29 @@
                     {{year .ReleaseDate}}
                 </div>
                 {{if .KeywordWatchIDs}}
-                <div class="text-xs text-muted" style="margin-top: var(--space-xs);">
+                <div class="text-muted text-sm" style="margin-top: var(--space-xs);">
                     {{range .KeywordWatchIDs}}
                     {{if index $.KeywordNames .}}
-                    <span class="text-xs">{{index $.KeywordNames .}}</span>
+                    <span>{{index $.KeywordNames .}}</span>
                     {{end}}
                     {{end}}
                 </div>
                 {{end}}
-            </div>
-            <div class="card-actions" style="display: flex; gap: var(--space-xs);">
-                <form autocomplete="off" method="post" action="/suggestions/{{.ID}}/add" style="flex: 1;">
-                    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
-                    <input type="hidden" name="tmdb_id" value="{{.TMDBID}}" autocomplete="off">
-                    <input type="hidden" name="media_type" value="{{.MediaType}}" autocomplete="off">
-                    <input type="hidden" name="stub_title" value="{{.Title}}" autocomplete="off">
-                    <input type="hidden" name="stub_poster" value="{{.PosterPath}}" autocomplete="off">
-                    <input type="hidden" name="stub_release_date" value="{{.ReleaseDate}}" autocomplete="off">
-                    <button type="submit" class="btn" style="font-size: var(--text-xs); width: 100%;">{{call $.T "action.add"}}</button>
-                </form>
-                <form autocomplete="off" method="post" action="/suggestions/{{.ID}}/dismiss" style="flex: 1;">
-                    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
-                    <button type="submit" class="btn" style="font-size: var(--text-xs); width: 100%;">{{call $.T "action.dismiss"}}</button>
-                </form>
+                <div style="display: flex; gap: var(--space-xs); margin-top: var(--space-xs);">
+                    <form autocomplete="off" method="post" action="/suggestions/{{.ID}}/add" style="flex: 1;">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
+                        <input type="hidden" name="tmdb_id" value="{{.TMDBID}}" autocomplete="off">
+                        <input type="hidden" name="media_type" value="{{.MediaType}}" autocomplete="off">
+                        <input type="hidden" name="stub_title" value="{{.Title}}" autocomplete="off">
+                        <input type="hidden" name="stub_poster" value="{{.PosterPath}}" autocomplete="off">
+                        <input type="hidden" name="stub_release_date" value="{{.ReleaseDate}}" autocomplete="off">
+                        <button type="submit" class="btn" style="width: 100%;">{{call $.T "action.add"}}</button>
+                    </form>
+                    <form autocomplete="off" method="post" action="/suggestions/{{.ID}}/dismiss" style="flex: 1;">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}" autocomplete="off">
+                        <button type="submit" class="btn" style="width: 100%;">{{call $.T "action.dismiss"}}</button>
+                    </form>
+                </div>
             </div>
         </div>
         {{end}}

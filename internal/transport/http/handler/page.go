@@ -267,14 +267,20 @@ func NewPageHandler(
 		"discover":       parse("discover"),
 		"suggestions":    parse("suggestions"),
 		"keywords":       parse("keywords"),
+		"keyword_new":    parse("keyword_new"),
+		"keyword_edit":   parse("keyword_edit"),
 		"admin":          parse("admin"),
 		"tags":           parse("tags"),
+		"tag_new":        parse("tag_new"),
+		"tag_edit":       parse("tag_edit"),
 		"episode":        parse("episode"),
 		"watched":        parse("watched"),
 		"preview":        parse("preview"),
-		"webhooks":       parse("webhooks"),
-		"webhook_detail": parse("webhook_detail"),
-		"webhook_edit":   parse("webhook_edit"),
+		"webhooks":          parse("webhooks"),
+		"webhook_detail":    parse("webhook_detail"),
+		"webhook_edit":      parse("webhook_edit"),
+		"webhook_new_type":  parse("webhook_new_type"),
+		"webhook_new":       parse("webhook_new"),
 	}
 
 	return &PageHandler{
@@ -1408,6 +1414,37 @@ func (h *PageHandler) Keywords(w http.ResponseWriter, r *http.Request) {
 	h.render(w, "keywords", r, data)
 }
 
+func (h *PageHandler) KeywordNewPage(w http.ResponseWriter, r *http.Request) {
+	_, user, settings, ok := h.requireAuth(w, r)
+	if !ok {
+		return
+	}
+	h.render(w, "keyword_new", r, h.baseData("keywords", user, settings))
+}
+
+func (h *PageHandler) KeywordEditPage(w http.ResponseWriter, r *http.Request) {
+	userID, user, settings, ok := h.requireAuth(w, r)
+	if !ok {
+		return
+	}
+	kwID := chi.URLParam(r, "id")
+	watches, _ := h.keywords.List(r.Context(), userID)
+	var target *model.KeywordWatch
+	for i := range watches {
+		if watches[i].ID == kwID {
+			target = &watches[i]
+			break
+		}
+	}
+	if target == nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	data := h.baseData("keywords", user, settings)
+	data["Watch"] = target
+	h.render(w, "keyword_edit", r, data)
+}
+
 func (h *PageHandler) HandleKeywordCreate(w http.ResponseWriter, r *http.Request) {
 	userID, _, _, ok := h.requireAuth(w, r)
 	if !ok {
@@ -1821,6 +1858,40 @@ func (h *PageHandler) HandleWebhookUpdate(w http.ResponseWriter, r *http.Request
 	http.Redirect(w, r, "/webhooks/"+whID, http.StatusSeeOther)
 }
 
+func (h *PageHandler) WebhookNewType(w http.ResponseWriter, r *http.Request) {
+	_, user, settings, ok := h.requireAuth(w, r)
+	if !ok {
+		return
+	}
+	data := h.baseData("webhooks", user, settings)
+	h.render(w, "webhook_new_type", r, data)
+}
+
+func (h *PageHandler) WebhookNew(w http.ResponseWriter, r *http.Request) {
+	_, user, settings, ok := h.requireAuth(w, r)
+	if !ok {
+		return
+	}
+	svc := r.URL.Query().Get("service")
+	labels := map[string]string{
+		model.WebhookServiceGeneric: "Generic JSON",
+		model.WebhookServiceDiscord: "Discord",
+		model.WebhookServiceSlack:   "Slack",
+		model.WebhookServiceNtfy:    "ntfy",
+		model.WebhookServiceCustom:  "Custom",
+	}
+	label, ok2 := labels[svc]
+	if !ok2 {
+		http.Redirect(w, r, "/webhooks/new-type", http.StatusSeeOther)
+		return
+	}
+	data := h.baseData("webhooks", user, settings)
+	data["Service"] = svc
+	data["ServiceLabel"] = label
+	data["Msg"] = r.URL.Query().Get("msg")
+	h.render(w, "webhook_new", r, data)
+}
+
 func (h *PageHandler) HandleWebhookCreate(w http.ResponseWriter, r *http.Request) {
 	userID, _, _, ok := h.requireAuth(w, r)
 	if !ok {
@@ -2156,9 +2227,49 @@ func (h *PageHandler) TagsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	allTags, _ := h.tags.List(r.Context(), userID)
+
+	sort := r.URL.Query().Get("sort")
+	if sort == "newest" {
+		// Reverse: newest first (List returns name-ordered).
+		for i, j := 0, len(allTags)-1; i < j; i, j = i+1, j-1 {
+			allTags[i], allTags[j] = allTags[j], allTags[i]
+		}
+	}
+
+	counts, _ := h.tagRepo.CountsByUser(r.Context(), userID)
+	if counts == nil {
+		counts = map[string]int{}
+	}
+
 	data := h.baseData("tags", user, settings)
 	data["AllTags"] = allTags
+	data["TagCounts"] = counts
+	data["Sort"] = sort
 	h.render(w, "tags", r, data)
+}
+
+func (h *PageHandler) TagNewPage(w http.ResponseWriter, r *http.Request) {
+	_, user, settings, ok := h.requireAuth(w, r)
+	if !ok {
+		return
+	}
+	h.render(w, "tag_new", r, h.baseData("tags", user, settings))
+}
+
+func (h *PageHandler) TagEditPage(w http.ResponseWriter, r *http.Request) {
+	_, user, settings, ok := h.requireAuth(w, r)
+	if !ok {
+		return
+	}
+	tagID := chi.URLParam(r, "id")
+	tag, err := h.tagRepo.GetByID(r.Context(), tagID)
+	if err != nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	data := h.baseData("tags", user, settings)
+	data["Tag"] = tag
+	h.render(w, "tag_edit", r, data)
 }
 
 func (h *PageHandler) HandleTagPageCreate(w http.ResponseWriter, r *http.Request) {
@@ -2168,6 +2279,17 @@ func (h *PageHandler) HandleTagPageCreate(w http.ResponseWriter, r *http.Request
 	}
 	name := r.FormValue("name")
 	_, _ = h.tags.Create(r.Context(), userID, name)
+	http.Redirect(w, r, "/tags", http.StatusSeeOther)
+}
+
+func (h *PageHandler) HandleTagPageUpdate(w http.ResponseWriter, r *http.Request) {
+	_, _, _, ok := h.requireAuth(w, r)
+	if !ok {
+		return
+	}
+	tagID := chi.URLParam(r, "id")
+	name := r.FormValue("name")
+	_ = h.tags.Update(r.Context(), tagID, name)
 	http.Redirect(w, r, "/tags", http.StatusSeeOther)
 }
 

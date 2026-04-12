@@ -30,6 +30,8 @@ type TagRepository interface {
 	Create(ctx context.Context, tag *Tag) error
 	GetByID(ctx context.Context, id string) (*Tag, error)
 	ListByUser(ctx context.Context, userID string) ([]Tag, error)
+	Update(ctx context.Context, id, name string) error
+	CountsByUser(ctx context.Context, userID string) (map[string]int, error)
 	Delete(ctx context.Context, id string) error
 }
 
@@ -37,5 +39,6 @@ type TagRepository interface {
 type TagService interface {
 	Create(ctx context.Context, userID, name string) (*Tag, error)
 	List(ctx context.Context, userID string) ([]Tag, error)
+	Update(ctx context.Context, id, name string) error
 	Delete(ctx context.Context, id string) error
 }
