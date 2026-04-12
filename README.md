@@ -1,6 +1,11 @@
 # binge-os-watch
 
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE.md)
+[![Go](https://img.shields.io/badge/go-1.23+-00ADD8.svg)](https://go.dev/)
+
 A fast, minimal, self-hosted media tracker for movies and TV shows. Powered by [TMDB](https://www.themoviedb.org/). Zero JavaScript — pure HTML forms with server-side rendering. SQLite storage, single binary, runs anywhere.
+
+<!-- TODO: Add screenshots of the OLED theme library grid, media detail, and calendar pages -->
 
 ## Features
 
@@ -17,12 +22,31 @@ A fast, minimal, self-hosted media tracker for movies and TV shows. Powered by [
 - Statistics: total movies, episodes, watch time, average rating, watch streak
 - Webhooks with built-in presets (Discord, Slack, ntfy) and custom templates
 - ICS calendar feed for subscribing in any calendar app
-- Trakt JSON import
+- Trakt JSON import, library export/import (JSON)
 - Multi-user support with admin panel
 - Three themes: OLED, dark, light
 - Localization: English, Deutsch, Nederlands
 - REST API with Bearer token auth
 - No JavaScript required — works with JS disabled
+
+## Architecture
+
+```
+cmd/server/          → entry point, DI wiring, router
+internal/
+  model/             → domain types and interfaces (no dependencies)
+  repository/        → SQLite persistence (depends on model)
+  service/           → business logic (depends on model, tmdb)
+  jobs/              → background workers (depends on model, tmdb)
+  transport/http/    → HTTP handlers + middleware (depends on everything above)
+  config/            → TOML config loading
+  auth/              → password hashing, session management
+  i18n/              → translations (en, de, nl)
+  tmdb/              → TMDB API client
+web/                 → embedded templates + static CSS
+```
+
+Strict package isolation: internal packages never import each other except through `model` interfaces. All TMDB-blocking work goes through an async job queue. The UI is server-rendered Go templates with zero JavaScript — every mutation is a form POST that redirects on success.
 
 ## Quick Start
 
@@ -60,6 +84,9 @@ base_url = "http://localhost:8080"
 
 # Set to true to disable the web UI and only serve the API.
 # disable_ui = false
+
+# Set to true to disable the REST API and only serve the web UI.
+# disable_api = false
 
 # Set to true to disable user registration (existing accounts still work).
 # disable_registration = false
@@ -161,6 +188,17 @@ The feed includes upcoming and recently-released items from your library.
 
 Full OpenAPI 3.1 spec at `api/openapi.yaml`.
 
+### Health and Version
+
+Always available regardless of `disable_ui` / `disable_api` settings:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check with DB status |
+| GET | `/version` | Build version, commit, date |
+| GET | `/api/v1/health` | Same (API-namespaced) |
+| GET | `/api/v1/version` | Same (API-namespaced) |
+
 ### Authentication
 
 ```bash
@@ -194,9 +232,13 @@ curl http://localhost:8080/api/v1/media \
 
 See `api/openapi.yaml` for the complete API reference.
 
-## API-Only Mode
+## Running Modes
 
-Set `disable_ui = true` in the config to run without the web UI. Only the REST API, health check, and ICS feed will be available.
+| Mode | Config | What's served |
+|------|--------|---------------|
+| Full (default) | — | Web UI + REST API |
+| API-only | `disable_ui = true` | REST API + health + ICS |
+| UI-only | `disable_api = true` | Web UI + health + ICS |
 
 ## Building
 
@@ -204,8 +246,15 @@ Set `disable_ui = true` in the config to run without the web UI. Only the REST A
 make build          # Build for all platforms (linux, darwin, windows)
 make test           # Run tests
 make test-race      # Run tests with race detector
+make lint           # Run staticcheck
 make clean          # Remove build artifacts
 ```
+
+## Contributing
+
+1. Fork the repo, create a branch
+2. Make changes, run `make check`
+3. Open a PR with a clear description
 
 ## Development
 
