@@ -241,6 +241,12 @@ func libraryOrderBy(filter model.LibraryFilter, userID string) (orderBy, extraSe
 // "watching" and that still have at least one unwatched aired-regular
 // episode (movies in "watching" pass through unconditionally). Single
 // query, no per-row recalc, uses the watch_event indexes.
+//
+// Ordered by the most recent aired episode (or movie release date) DESC
+// so the dashboard's "last aired …" badge stays in sync with the
+// row order. Doing this in SQL — rather than sorting in Go after the
+// LIMIT — guarantees a freshly-aired show isn't pruned by the limit
+// before the sort sees it.
 func (r *LibraryRepository) ListContinueWatching(ctx context.Context, userID string, limit int) ([]model.LibraryView, error) {
 	if limit <= 0 {
 		limit = 10
@@ -260,7 +266,21 @@ func (r *LibraryRepository) ListContinueWatching(ctx context.Context, userID str
 		        )
 		    )
 		  )
-		ORDER BY COALESCE(l.watched_at, l.updated_at) DESC
+		ORDER BY COALESCE(
+		           (SELECT MAX(e.air_date)
+		              FROM aired_regular_episodes e
+		              JOIN tmdb_season sn ON e.season_id = sn.id
+		              WHERE sn.show_id = l.show_id),
+		           m.release_date
+		         ) IS NULL,
+		         COALESCE(
+		           (SELECT MAX(e.air_date)
+		              FROM aired_regular_episodes e
+		              JOIN tmdb_season sn ON e.season_id = sn.id
+		              WHERE sn.show_id = l.show_id),
+		           m.release_date
+		         ) DESC,
+		         l.id
 		LIMIT ?`
 
 	rows, err := r.conn(ctx).QueryContext(ctx, query, userID, limit)

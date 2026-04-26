@@ -7,10 +7,21 @@
     <div class="page-header">
         <div class="breadcrumb"><span class="current">{{call .T "search.title"}}</span></div>
         <div class="page-header-row">
+            {{$yearQS := ""}}{{if .SearchYear}}{{$yearQS = print "&year=" .SearchYear}}{{end}}
+            {{$sortQS := print "&sort=" .SearchSort}}
             <div class="filter-bar">
-                <a href="/search{{if .Query}}?q={{.Query}}{{end}}"{{if not .SearchType}} class="active"{{end}}>All</a>
-                <a href="/search?{{if .Query}}q={{.Query}}&{{end}}type=movie"{{if eq .SearchType "movie"}} class="active"{{end}}>{{call .T "media.movie"}}</a>
-                <a href="/search?{{if .Query}}q={{.Query}}&{{end}}type=tv"{{if eq .SearchType "tv"}} class="active"{{end}}>{{call .T "media.tv"}}</a>
+                <a href="/search{{if .Query}}?q={{.Query}}{{$yearQS}}{{$sortQS}}{{end}}"{{if not .SearchType}} class="active"{{end}}>All</a>
+                <a href="/search?{{if .Query}}q={{.Query}}&{{end}}type=movie{{$yearQS}}{{$sortQS}}"{{if eq .SearchType "movie"}} class="active"{{end}}>{{call .T "media.movie"}}</a>
+                <a href="/search?{{if .Query}}q={{.Query}}&{{end}}type=tv{{$yearQS}}{{$sortQS}}"{{if eq .SearchType "tv"}} class="active"{{end}}>{{call .T "media.tv"}}</a>
+            </div>
+            {{$base := print "/search?q=" .Query "&type=" .SearchType}}
+            <div class="sort-bar">
+                {{call .T "library.sort"}}:
+                <a href="{{$base}}{{$yearQS}}&sort=release_desc"{{if eq .SearchSort "release_desc"}} class="active"{{end}}>{{call .T "library.sort_release"}} &darr;</a>
+                <a href="{{$base}}{{$yearQS}}&sort=release_asc"{{if eq .SearchSort "release_asc"}} class="active"{{end}}>{{call .T "library.sort_release"}} &uarr;</a>
+                <a href="{{$base}}{{$yearQS}}&sort=title_asc"{{if eq .SearchSort "title_asc"}} class="active"{{end}}>{{call .T "library.sort_title"}}</a>
+                <a href="{{$base}}{{$yearQS}}&sort=vote_desc"{{if eq .SearchSort "vote_desc"}} class="active"{{end}}>{{call .T "library.sort_rating"}}</a>
+                <a href="{{$base}}{{$yearQS}}&sort=relevance"{{if eq .SearchSort "relevance"}} class="active"{{end}}>Relevance</a>
             </div>
         </div>
         <hr class="page-header-sep">
@@ -19,6 +30,8 @@
     <form autocomplete="off" method="get" action="/search" class="search-form">
         <input type="search" name="q" value="{{.Query}}" placeholder="{{call .T "search.hint"}}" required autofocus autocomplete="off">
         {{if .SearchType}}<input type="hidden" name="type" value="{{.SearchType}}" autocomplete="off">{{end}}
+        <input type="number" name="year" value="{{if .SearchYear}}{{.SearchYear}}{{end}}" placeholder="Year" min="1900" max="2100" style="width: 6rem;" autocomplete="off">
+        <input type="hidden" name="sort" value="{{.SearchSort}}" autocomplete="off">
         <button type="submit" class="btn btn-primary">{{call .T "action.search"}}</button>
     </form>
 
@@ -63,6 +76,8 @@
                     <input type="hidden" name="q" value="{{$.Query}}" autocomplete="off">
                     <input type="hidden" name="page" value="{{$.SearchPage}}" autocomplete="off">
                     <input type="hidden" name="type" value="{{$.SearchType}}" autocomplete="off">
+                    <input type="hidden" name="sort" value="{{$.SearchSort}}" autocomplete="off">
+                    {{if $.SearchYear}}<input type="hidden" name="year" value="{{$.SearchYear}}" autocomplete="off">{{end}}
                     <button type="submit" class="btn" style="width: 100%;">{{call $.T "media.add_to_lib"}}</button>
                 </form>
                 {{else}}
@@ -75,12 +90,14 @@
 
     {{if gt .TotalPages 1}}
     <div style="padding: var(--space-md) 0; display: flex; gap: var(--space-sm);">
+        {{$pageQS := print "?q=" .Query "&type=" .SearchType "&sort=" .SearchSort}}
+        {{if .SearchYear}}{{$pageQS = print $pageQS "&year=" .SearchYear}}{{end}}
         {{if gt .SearchPage 1}}
-        <a href="/search?q={{.Query}}{{if .SearchType}}&type={{.SearchType}}{{end}}&page={{add .SearchPage -1}}" class="btn">Prev</a>
+        <a href="/search{{$pageQS}}&page={{add .SearchPage -1}}" class="btn">Prev</a>
         {{end}}
         <span class="text-muted">Page {{.SearchPage}} / {{.TotalPages}}</span>
         {{if lt .SearchPage .TotalPages}}
-        <a href="/search?q={{.Query}}{{if .SearchType}}&type={{.SearchType}}{{end}}&page={{add .SearchPage 1}}" class="btn">Next</a>
+        <a href="/search{{$pageQS}}&page={{add .SearchPage 1}}" class="btn">Next</a>
         {{end}}
     </div>
     {{end}}

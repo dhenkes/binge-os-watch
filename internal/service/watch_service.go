@@ -381,11 +381,11 @@ func (s *WatchServiceImpl) recalcDerived(ctx context.Context, view *model.Librar
 	if view.Entry.ShowID == nil {
 		return fmt.Errorf("tv library entry with no show id: %s", view.Entry.ID)
 	}
-	watched, total, err := s.events.ProgressForShow(ctx, view.Entry.UserID, *view.Entry.ShowID)
+	watched, total, hasFuture, err := s.events.ProgressForShow(ctx, view.Entry.UserID, *view.Entry.ShowID)
 	if err != nil {
 		return err
 	}
-	derived := model.DeriveStatus(total, watched, false)
+	derived := model.DeriveStatus(total, watched, false, hasFuture)
 
 	// If the user has an explicit manual status, only clear it when we
 	// can confidently auto-derive a new one (i.e. they just watched or

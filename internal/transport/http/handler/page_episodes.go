@@ -28,6 +28,29 @@ func (h *PageHandler) HandleWatchNext(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/media/"+libraryID, http.StatusSeeOther)
 }
 
+// HandleWatchMovie is the one-click "Mark watched" button on the movie
+// detail page — mirrors HandleWatchNext for shows. Creates a watch_event
+// dated now and flips the manual status to watched in a single POST so
+// the user doesn't have to dropdown-then-date-then-save.
+func (h *PageHandler) HandleWatchMovie(w http.ResponseWriter, r *http.Request) {
+	userID, _, _, ok := h.requireAuth(w, r)
+	if !ok {
+		return
+	}
+	libraryID := chi.URLParam(r, "id")
+	v, err := h.libraryRepo.GetByID(r.Context(), libraryID)
+	if err == nil && v != nil && v.Movie != nil {
+		if err := h.watch.WatchMovie(r.Context(), userID, v.Movie.ID, 0, ""); err != nil {
+			slog.Error("watch movie", "error", err)
+		}
+		watched := model.MediaStatusWatched
+		if err := h.library.SetStatus(r.Context(), libraryID, &watched); err != nil {
+			slog.Error("set status watched", "error", err)
+		}
+	}
+	http.Redirect(w, r, "/media/"+libraryID, http.StatusSeeOther)
+}
+
 // --- Episode mutators ---
 
 func (h *PageHandler) HandleWatchEpisode(w http.ResponseWriter, r *http.Request) {

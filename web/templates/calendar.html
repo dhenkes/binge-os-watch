@@ -8,18 +8,25 @@
         <div class="breadcrumb"><span class="current">{{call .T "calendar.title"}}</span></div>
         <div class="page-header-row">
             <div class="filter-bar">
-                <a href="/calendar?section={{.Section}}&type={{.Filter.MediaType}}&range=7d"{{if eq .Filter.Range "7d"}} class="active"{{end}}>7d</a>
-                <a href="/calendar?section={{.Section}}&type={{.Filter.MediaType}}&range=30d"{{if eq .Filter.Range "30d"}} class="active"{{end}}>30d</a>
-                <a href="/calendar?section={{.Section}}&type={{.Filter.MediaType}}&range=90d"{{if eq .Filter.Range "90d"}} class="active"{{end}}>90d</a>
-                <a href="/calendar?section={{.Section}}&type={{.Filter.MediaType}}&range=all"{{if eq .Filter.Range "all"}} class="active"{{end}}>All</a>
+                <a href="/calendar?section={{.Section}}&type={{.Filter.MediaType}}&status={{print .Filter.Status}}&range=7d"{{if eq .Filter.Range "7d"}} class="active"{{end}}>7d</a>
+                <a href="/calendar?section={{.Section}}&type={{.Filter.MediaType}}&status={{print .Filter.Status}}&range=30d"{{if eq .Filter.Range "30d"}} class="active"{{end}}>30d</a>
+                <a href="/calendar?section={{.Section}}&type={{.Filter.MediaType}}&status={{print .Filter.Status}}&range=90d"{{if eq .Filter.Range "90d"}} class="active"{{end}}>90d</a>
+                <a href="/calendar?section={{.Section}}&type={{.Filter.MediaType}}&status={{print .Filter.Status}}&range=all"{{if eq .Filter.Range "all"}} class="active"{{end}}>All</a>
                 <span class="sep">|</span>
-                <a href="/calendar?section={{.Section}}&range={{.Filter.Range}}"{{if not .Filter.MediaType}} class="active"{{end}}>All</a>
-                <a href="/calendar?section={{.Section}}&range={{.Filter.Range}}&type=movie"{{if eq (print .Filter.MediaType) "movie"}} class="active"{{end}}>{{call .T "media.movie"}}</a>
-                <a href="/calendar?section={{.Section}}&range={{.Filter.Range}}&type=tv"{{if eq (print .Filter.MediaType) "tv"}} class="active"{{end}}>{{call .T "media.tv"}}</a>
+                <a href="/calendar?section={{.Section}}&range={{.Filter.Range}}&status={{print .Filter.Status}}"{{if not .Filter.MediaType}} class="active"{{end}}>All</a>
+                <a href="/calendar?section={{.Section}}&range={{.Filter.Range}}&status={{print .Filter.Status}}&type=movie"{{if eq (print .Filter.MediaType) "movie"}} class="active"{{end}}>{{call .T "media.movie"}}</a>
+                <a href="/calendar?section={{.Section}}&range={{.Filter.Range}}&status={{print .Filter.Status}}&type=tv"{{if eq (print .Filter.MediaType) "tv"}} class="active"{{end}}>{{call .T "media.tv"}}</a>
                 <span class="sep">|</span>
-                <a href="/calendar?range={{.Filter.Range}}&type={{.Filter.MediaType}}"{{if not .Section}} class="active"{{end}}>All</a>
-                <a href="/calendar?range={{.Filter.Range}}&type={{.Filter.MediaType}}&section=recent"{{if eq .Section "recent"}} class="active"{{end}}>{{call .T "calendar.recent"}}</a>
-                <a href="/calendar?range={{.Filter.Range}}&type={{.Filter.MediaType}}&section=upcoming"{{if eq .Section "upcoming"}} class="active"{{end}}>{{call .T "calendar.upcoming"}}</a>
+                <a href="/calendar?range={{.Filter.Range}}&type={{.Filter.MediaType}}&status={{print .Filter.Status}}"{{if not .Section}} class="active"{{end}}>All</a>
+                <a href="/calendar?range={{.Filter.Range}}&type={{.Filter.MediaType}}&status={{print .Filter.Status}}&section=recent"{{if eq .Section "recent"}} class="active"{{end}}>{{call .T "calendar.recent"}}</a>
+                <a href="/calendar?range={{.Filter.Range}}&type={{.Filter.MediaType}}&status={{print .Filter.Status}}&section=upcoming"{{if eq .Section "upcoming"}} class="active"{{end}}>{{call .T "calendar.upcoming"}}</a>
+                <span class="sep">|</span>
+                <a href="/calendar?section={{.Section}}&range={{.Filter.Range}}&type={{.Filter.MediaType}}"{{if not .Filter.Status}} class="active"{{end}}>All</a>
+                <a href="/calendar?section={{.Section}}&range={{.Filter.Range}}&type={{.Filter.MediaType}}&status=watching"{{if eq (print .Filter.Status) "watching"}} class="active"{{end}}>{{call .T "media.watching"}}</a>
+                <a href="/calendar?section={{.Section}}&range={{.Filter.Range}}&type={{.Filter.MediaType}}&status=watched"{{if eq (print .Filter.Status) "watched"}} class="active"{{end}}>{{call .T "media.watched"}}</a>
+                <a href="/calendar?section={{.Section}}&range={{.Filter.Range}}&type={{.Filter.MediaType}}&status=plan_to_watch"{{if eq (print .Filter.Status) "plan_to_watch"}} class="active"{{end}}>{{call .T "media.plan_to_watch"}}</a>
+                <a href="/calendar?section={{.Section}}&range={{.Filter.Range}}&type={{.Filter.MediaType}}&status=on_hold"{{if eq (print .Filter.Status) "on_hold"}} class="active"{{end}}>{{call .T "media.on_hold"}}</a>
+                <a href="/calendar?section={{.Section}}&range={{.Filter.Range}}&type={{.Filter.MediaType}}&status=dropped"{{if eq (print .Filter.Status) "dropped"}} class="active"{{end}}>{{call .T "media.dropped"}}</a>
             </div>
         </div>
         <hr class="page-header-sep">

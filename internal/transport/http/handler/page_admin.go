@@ -2,6 +2,7 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/dhenkes/binge-os-watch/internal/model"
@@ -120,6 +121,38 @@ func (h *PageHandler) HandleTMDBJobRetry(w http.ResponseWriter, r *http.Request)
 		}
 	}
 	http.Redirect(w, r, "/admin?tab=tmdb_jobs", http.StatusSeeOther)
+}
+
+// HandleRecalcStatuses recalculates the derived status for every TV library
+// entry across all users. Admin-only action on the admin page.
+func (h *PageHandler) HandleRecalcStatuses(w http.ResponseWriter, r *http.Request) {
+	if _, _, _, ok := h.requireAdmin(w, r); !ok {
+		return
+	}
+	users, err := h.users.ListAll(r.Context())
+	if err != nil {
+		slog.Error("recalc: listing users", "error", err)
+		http.Redirect(w, r, "/admin?tab=stats", http.StatusSeeOther)
+		return
+	}
+	var recalced int
+	for _, u := range users {
+		page := model.PageRequest{PageSize: 1000}
+		result, err := h.libraryRepo.List(r.Context(), u.ID, model.LibraryFilter{MediaType: model.MediaTypeTV}, page)
+		if err != nil {
+			slog.Error("recalc: listing library", "user", u.ID, "error", err)
+			continue
+		}
+		for _, v := range result.Items {
+			if err := h.watch.RecalcStatus(r.Context(), v.Entry.ID); err != nil {
+				slog.Error("recalc status", "entry", v.Entry.ID, "error", err)
+				continue
+			}
+			recalced++
+		}
+	}
+	slog.Info("recalc statuses done", "count", recalced)
+	http.Redirect(w, r, "/admin?tab=stats", http.StatusSeeOther)
 }
 
 // HandleTMDBJobDelete removes a tmdb_job row outright. Used for

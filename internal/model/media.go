@@ -41,10 +41,15 @@ var ValidMediaStatuses = []MediaStatus{
 // DeriveStatus computes the auto-derived status from watch progress.
 // Pure — used by the watch service's recalc path.
 //
-//   - 0 watched           → plan_to_watch
-//   - 1+ watched, not all → watching
-//   - all watched         → watched
-func DeriveStatus(totalEpisodes, watchedEpisodes int, manualOverride bool) MediaStatus {
+//   - 0 watched                          → plan_to_watch
+//   - all aired watched + future exists  → watching (caught up, waiting for more)
+//   - all aired watched + no future      → watched  (show fully released & seen)
+//   - 1+ watched, not all aired          → watching
+//
+// hasFutureEpisodes should be true when the show has unaired episodes
+// (season_number > 0, air_date in the future or NULL). This prevents
+// "watched" while the show is still releasing.
+func DeriveStatus(totalEpisodes, watchedEpisodes int, manualOverride, hasFutureEpisodes bool) MediaStatus {
 	if manualOverride {
 		return "" // caller keeps current status
 	}
@@ -52,6 +57,9 @@ func DeriveStatus(totalEpisodes, watchedEpisodes int, manualOverride bool) Media
 		return MediaStatusPlanToWatch
 	}
 	if totalEpisodes > 0 && watchedEpisodes >= totalEpisodes {
+		if hasFutureEpisodes {
+			return MediaStatusWatching
+		}
 		return MediaStatusWatched
 	}
 	return MediaStatusWatching

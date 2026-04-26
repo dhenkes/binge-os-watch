@@ -138,7 +138,10 @@ func init() {
 		"settings.trakt_hint":     "Upload a Trakt JSON export. Movies are marked as watched. TV shows are added to your library (episode progress must be tracked manually).",
 
 		// Admin (extended)
-		"admin.role":        "Role",
-		"admin.delete_user": "Delete User",
+		"admin.role":             "Role",
+		"admin.delete_user":      "Delete User",
+		"admin.actions":          "Actions",
+		"admin.recalc_statuses":  "Recalculate derived statuses",
+		"action.run":             "run",
 	})
 }

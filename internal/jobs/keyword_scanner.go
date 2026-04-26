@@ -83,14 +83,14 @@ func (j *KeywordScanner) scanKeyword(ctx context.Context, kw *model.KeywordWatch
 		var results []tmdb.SearchResult
 		switch mt {
 		case "movie":
-			resp, err := j.tmdb.SearchMovies(ctx, kw.Keyword, 1)
+			resp, err := j.tmdb.SearchMovies(ctx, kw.Keyword, 1, 0)
 			if err != nil {
 				slog.Warn("keyword scanner: search failed", "keyword", kw.Keyword, "type", mt, "error", err)
 				continue
 			}
 			results = resp.Results
 		case "tv":
-			resp, err := j.tmdb.SearchTV(ctx, kw.Keyword, 1)
+			resp, err := j.tmdb.SearchTV(ctx, kw.Keyword, 1, 0)
 			if err != nil {
 				slog.Warn("keyword scanner: search failed", "keyword", kw.Keyword, "type", mt, "error", err)
 				continue

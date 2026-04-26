@@ -19,6 +19,7 @@ func (h *PageHandler) Calendar(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	filter := model.CalendarFilter{
 		MediaType: model.MediaType(q.Get("type")),
+		Status:    model.MediaStatus(q.Get("status")),
 		Range:     q.Get("range"),
 	}
 	if filter.Range == "" {

@@ -143,9 +143,11 @@ func (r *WatchEventRepository) HasMovie(ctx context.Context, userID, movieID str
 }
 
 // ProgressForShow returns the number of distinct watched aired-regular
-// episodes and the total count of aired-regular episodes for a show.
-// Distinct because rewatches don't count as additional progress.
-func (r *WatchEventRepository) ProgressForShow(ctx context.Context, userID, showID string) (watched, total int, err error) {
+// episodes, the total count of aired-regular episodes for a show, and
+// whether the show has future (unaired, non-special) episodes. Distinct
+// because rewatches don't count as additional progress.
+func (r *WatchEventRepository) ProgressForShow(ctx context.Context, userID, showID string) (watched, total int, hasFuture bool, err error) {
+	var futureCount int
 	err = r.conn(ctx).QueryRowContext(ctx,
 		`SELECT
 		   (SELECT COUNT(*) FROM aired_regular_episodes e
@@ -154,12 +156,16 @@ func (r *WatchEventRepository) ProgressForShow(ctx context.Context, userID, show
 		   (SELECT COUNT(DISTINCT e.id) FROM aired_regular_episodes e
 		    JOIN tmdb_season sn ON e.season_id = sn.id
 		    JOIN watch_event we ON we.episode_id = e.id
-		    WHERE sn.show_id = ? AND we.user_id = ?) AS watched`,
-		showID, showID, userID).Scan(&total, &watched)
+		    WHERE sn.show_id = ? AND we.user_id = ?) AS watched,
+		   (SELECT COUNT(*) FROM tmdb_episode e
+		    JOIN tmdb_season sn ON e.season_id = sn.id
+		    WHERE sn.show_id = ? AND sn.season_number > 0
+		      AND (e.air_date IS NULL OR e.air_date > CAST(strftime('%s','now') AS INTEGER))) AS future`,
+		showID, showID, userID, showID).Scan(&total, &watched, &futureCount)
 	if err != nil {
-		return 0, 0, fmt.Errorf("computing show progress: %w", err)
+		return 0, 0, false, fmt.Errorf("computing show progress: %w", err)
 	}
-	return watched, total, nil
+	return watched, total, futureCount > 0, nil
 }
 
 // NextUnwatched returns the earliest aired-regular episode in a show that

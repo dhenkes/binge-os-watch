@@ -314,6 +314,7 @@ func NewPageHandler(
 // LibraryCard is a flattened shape for templates that render a library card.
 type LibraryCard struct {
 	ID             string
+	TMDBID         int
 	Title          string
 	Overview       string
 	PosterPath     string
@@ -327,6 +328,7 @@ type LibraryCard struct {
 	Notes          string
 	UnwatchedCount int
 	Refreshing     bool
+	LastAiredAt    *int64 // most recent aired regular episode (TV only)
 }
 
 func toCard(v model.LibraryView) LibraryCard {
@@ -339,6 +341,7 @@ func toCard(v model.LibraryView) LibraryCard {
 		UnwatchedCount: v.UnwatchedCount,
 	}
 	if v.Show != nil {
+		c.TMDBID = v.Show.TMDBID
 		c.Title = v.Show.Title
 		c.Overview = v.Show.Overview
 		c.PosterPath = v.Show.PosterPath
@@ -348,6 +351,7 @@ func toCard(v model.LibraryView) LibraryCard {
 		c.Refreshing = v.Show.RefreshedAt == 0
 	}
 	if v.Movie != nil {
+		c.TMDBID = v.Movie.TMDBID
 		c.Title = v.Movie.Title
 		c.Overview = v.Movie.Overview
 		c.PosterPath = v.Movie.PosterPath

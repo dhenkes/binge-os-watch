@@ -138,7 +138,10 @@ func init() {
 		"settings.trakt_hint":     "Lade einen Trakt JSON-Export hoch. Filme werden als gesehen markiert. Serien werden zur Bibliothek hinzugefügt (Folgenfortschritt muss manuell nachgetragen werden).",
 
 		// Admin (extended)
-		"admin.role":        "Rolle",
-		"admin.delete_user": "Benutzer löschen",
+		"admin.role":             "Rolle",
+		"admin.delete_user":      "Benutzer löschen",
+		"admin.actions":          "Aktionen",
+		"admin.recalc_statuses":  "Abgeleitete Status neu berechnen",
+		"action.run":             "ausführen",
 	})
 }

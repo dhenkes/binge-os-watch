@@ -32,7 +32,7 @@ type WatchEventRepository interface {
 	// For a single show: watched_count / total, next unwatched aired
 	// regular episode, and a map of episode_id → latest watched_at for
 	// bulk UI rendering without N+1.
-	ProgressForShow(ctx context.Context, userID, showID string) (watched, total int, err error)
+	ProgressForShow(ctx context.Context, userID, showID string) (watched, total int, hasFuture bool, err error)
 	NextUnwatched(ctx context.Context, userID, showID string) (*TMDBEpisode, error)
 	WatchedMapForShow(ctx context.Context, userID, showID string) (map[string]int64, error)
 

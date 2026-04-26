@@ -71,7 +71,7 @@ func TestSearchMovies(t *testing.T) {
 		})
 	}))
 
-	resp, err := c.SearchMovies(context.Background(), "fight club", 1)
+	resp, err := c.SearchMovies(context.Background(), "fight club", 1, 0)
 	if err != nil {
 		t.Fatalf("SearchMovies() error: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestSearchTV(t *testing.T) {
 		})
 	}))
 
-	resp, err := c.SearchTV(context.Background(), "breaking bad", 1)
+	resp, err := c.SearchTV(context.Background(), "breaking bad", 1, 0)
 	if err != nil {
 		t.Fatalf("SearchTV() error: %v", err)
 	}

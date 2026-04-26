@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -15,20 +16,38 @@ import (
 	"github.com/dhenkes/binge-os-watch/internal/tmdb"
 )
 
+// Sort modes for the search results page. The default is release_desc so
+// newest titles surface first; "relevance" preserves TMDB's own ranking.
+const (
+	searchSortReleaseDesc = "release_desc"
+	searchSortReleaseAsc  = "release_asc"
+	searchSortTitleAsc    = "title_asc"
+	searchSortVoteDesc    = "vote_desc"
+	searchSortRelevance   = "relevance"
+)
+
 func (h *PageHandler) Search(w http.ResponseWriter, r *http.Request) {
 	userID, user, settings, ok := h.requireAuth(w, r)
 	if !ok {
 		return
 	}
 
+	q := r.URL.Query()
 	data := h.baseData("search", user, settings)
-	query := r.URL.Query().Get("q")
-	searchType := r.URL.Query().Get("type")
+	query := q.Get("q")
+	searchType := q.Get("type")
+	sortMode := normalizeSearchSort(q.Get("sort"))
+	year, _ := strconv.Atoi(q.Get("year"))
+	if year < 0 {
+		year = 0
+	}
 	data["Query"] = query
 	data["SearchType"] = searchType
+	data["SearchSort"] = sortMode
+	data["SearchYear"] = year
 
 	if query != "" {
-		page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+		page, _ := strconv.Atoi(q.Get("page"))
 		if page < 1 {
 			page = 1
 		}
@@ -36,9 +55,9 @@ func (h *PageHandler) Search(w http.ResponseWriter, r *http.Request) {
 		var err error
 		switch searchType {
 		case "movie":
-			results, err = h.tmdbClient.SearchMovies(r.Context(), query, page)
+			results, err = h.tmdbClient.SearchMovies(r.Context(), query, page, year)
 		case "tv":
-			results, err = h.tmdbClient.SearchTV(r.Context(), query, page)
+			results, err = h.tmdbClient.SearchTV(r.Context(), query, page, year)
 		default:
 			results, err = h.tmdbClient.SearchMulti(r.Context(), query, page)
 		}
@@ -47,10 +66,20 @@ func (h *PageHandler) Search(w http.ResponseWriter, r *http.Request) {
 		} else {
 			var filtered []tmdb.SearchResult
 			for _, sr := range results.Results {
-				if sr.MediaType == "movie" || sr.MediaType == "tv" {
-					filtered = append(filtered, sr)
+				if sr.MediaType != "movie" && sr.MediaType != "tv" {
+					continue
 				}
+				// Year filter for the multi-search path. The single-type
+				// paths already pushed year down to TMDB.
+				if year > 0 && searchType != "movie" && searchType != "tv" {
+					if y := parseYear(sr.DisplayDate()); y != year {
+						continue
+					}
+				}
+				filtered = append(filtered, sr)
 			}
+			sortSearchResults(filtered, sortMode)
+
 			libMap, _ := h.libraryRepo.GetLibraryMap(r.Context(), userID)
 
 			type SearchItem struct {
@@ -74,8 +103,71 @@ func (h *PageHandler) Search(w http.ResponseWriter, r *http.Request) {
 			data["TotalResults"] = results.TotalResults
 		}
 	}
-	data["Msg"] = r.URL.Query().Get("msg")
+	data["Msg"] = q.Get("msg")
 	h.render(w, "search", r, data)
+}
+
+func normalizeSearchSort(s string) string {
+	switch s {
+	case searchSortReleaseAsc, searchSortTitleAsc, searchSortVoteDesc, searchSortRelevance:
+		return s
+	default:
+		return searchSortReleaseDesc
+	}
+}
+
+// parseYear pulls the leading 4-digit year out of a TMDB date string
+// ("2023-04-15" → 2023). Returns 0 when the input is empty or malformed.
+func parseYear(s string) int {
+	if len(s) < 4 {
+		return 0
+	}
+	y, err := strconv.Atoi(s[:4])
+	if err != nil {
+		return 0
+	}
+	return y
+}
+
+// sortSearchResults reorders the current page's results in place. TMDB
+// only returns 20 results per page, so a stable in-memory sort is good
+// enough — we don't need to re-fetch across pages.
+func sortSearchResults(rs []tmdb.SearchResult, mode string) {
+	switch mode {
+	case searchSortRelevance:
+		// Leave TMDB's order as-is.
+	case searchSortReleaseAsc:
+		sort.SliceStable(rs, func(i, j int) bool {
+			yi, yj := parseYear(rs[i].DisplayDate()), parseYear(rs[j].DisplayDate())
+			// Items with no date sort last in both directions.
+			if yi == 0 {
+				return false
+			}
+			if yj == 0 {
+				return true
+			}
+			return yi < yj
+		})
+	case searchSortTitleAsc:
+		sort.SliceStable(rs, func(i, j int) bool {
+			return strings.ToLower(rs[i].DisplayTitle()) < strings.ToLower(rs[j].DisplayTitle())
+		})
+	case searchSortVoteDesc:
+		sort.SliceStable(rs, func(i, j int) bool {
+			return rs[i].VoteAverage > rs[j].VoteAverage
+		})
+	default: // searchSortReleaseDesc
+		sort.SliceStable(rs, func(i, j int) bool {
+			yi, yj := parseYear(rs[i].DisplayDate()), parseYear(rs[j].DisplayDate())
+			if yi == 0 {
+				return false
+			}
+			if yj == 0 {
+				return true
+			}
+			return yi > yj
+		})
+	}
 }
 
 func (h *PageHandler) HandleSearchAdd(w http.ResponseWriter, r *http.Request) {
@@ -97,6 +189,12 @@ func (h *PageHandler) HandleSearchAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	if st := r.FormValue("type"); st != "" {
 		redirectURL += "&type=" + st
+	}
+	if s := r.FormValue("sort"); s != "" {
+		redirectURL += "&sort=" + s
+	}
+	if y := r.FormValue("year"); y != "" {
+		redirectURL += "&year=" + y
 	}
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }

@@ -100,6 +100,19 @@
         </ul>
     </div>
 
+    <div class="section">
+        <div class="section-title">{{call .T "admin.actions"}}</div>
+        <ul class="item-list">
+            <li class="item item-row">
+                <span>{{call .T "admin.recalc_statuses"}}</span>
+                <form autocomplete="off" method="post" action="/admin/recalc-statuses">
+                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+                    <button type="submit" class="inline-btn">{{call .T "action.run"}}</button>
+                </form>
+            </li>
+        </ul>
+    </div>
+
     {{else}}
 
     {{if .Users}}

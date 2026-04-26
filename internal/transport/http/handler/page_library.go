@@ -54,15 +54,42 @@ func (h *PageHandler) Library(w http.ResponseWriter, r *http.Request) {
 		if len(upcoming) > 5 {
 			upcoming = upcoming[:5]
 		}
+		recent, _ := h.calendar.RecentlyReleased(r.Context(), userID, model.CalendarFilter{Range: "30d"})
+		if len(recent) > 5 {
+			recent = recent[:5]
+		}
 		watching, _ := h.libraryRepo.ListContinueWatching(r.Context(), userID, 10)
 		unrated, _ := h.libraryRepo.ListUnratedWatched(r.Context(), userID, 10)
 		totalSize, _ := h.libraryRepo.TotalCount(r.Context(), userID)
 
 		watchingCards := toCards(watching)
 		unratedCards := toCards(unrated)
+
+		// Annotate continue-watching shows with the most recent aired
+		// episode date so the dashboard can show "last aired Apr 12" next
+		// to each item — gives the user a sense of how stale a show is
+		// before they click through.
+		var showIDs []string
+		for _, v := range watching {
+			if v.Show != nil {
+				showIDs = append(showIDs, v.Show.ID)
+			}
+		}
+		if latest, err := h.episodes.LatestAiredByShows(r.Context(), showIDs); err == nil {
+			for i, v := range watching {
+				if v.Show == nil {
+					continue
+				}
+				if ts, ok := latest[v.Show.ID]; ok {
+					t := ts
+					watchingCards[i].LastAiredAt = &t
+				}
+			}
+		}
 		data["View"] = ""
 		data["Stats"] = stats
 		data["Upcoming"] = upcoming
+		data["Recent"] = recent
 		data["Watching"] = watchingCards
 		data["Unrated"] = unratedCards
 		data["AutoRefresh"] = anyRefreshing(watchingCards) || anyRefreshing(unratedCards)
@@ -193,7 +220,7 @@ func (h *PageHandler) MediaDetail(w http.ResponseWriter, r *http.Request) {
 		}
 		data["Seasons"] = seasonsData
 
-		watched, total, _ := h.events.ProgressForShow(r.Context(), userID, v.Show.ID)
+		watched, total, _, _ := h.events.ProgressForShow(r.Context(), userID, v.Show.ID)
 		data["WatchedCount"] = watched
 		data["TotalEpisodes"] = total
 

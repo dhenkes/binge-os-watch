@@ -138,7 +138,10 @@ func init() {
 		"settings.trakt_hint":     "Upload een Trakt JSON-export. Films worden als gezien gemarkeerd. Series worden aan je bibliotheek toegevoegd (afleveringsvoortgang moet handmatig worden bijgehouden).",
 
 		// Admin (extended)
-		"admin.role":        "Rol",
-		"admin.delete_user": "Gebruiker verwijderen",
+		"admin.role":             "Rol",
+		"admin.delete_user":      "Gebruiker verwijderen",
+		"admin.actions":          "Acties",
+		"admin.recalc_statuses":  "Afgeleide statussen herberekenen",
+		"action.run":             "uitvoeren",
 	})
 }

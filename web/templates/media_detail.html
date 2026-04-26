@@ -51,6 +51,9 @@
                 {{if eq (print .Media.MediaType) "tv"}}
                 <li class="item"><div class="item-row"><span class="text-muted">Progress</span><span>{{.WatchedCount}} / {{.TotalEpisodes}} episodes</span></div></li>
                 {{end}}
+                {{if .Media.TMDBID}}
+                <li class="item"><div class="item-row"><span class="text-muted">TMDB</span><a href="https://www.themoviedb.org/{{.Media.MediaType}}/{{.Media.TMDBID}}" target="_blank" rel="noopener noreferrer">themoviedb.org &#8599;</a></div></li>
+                {{end}}
             </ul>
             {{if eq (print .Media.MediaType) "tv"}}
             <div class="progress-bar" style="margin-top: var(--space-sm);">
@@ -64,6 +67,16 @@
                 <form autocomplete="off" method="post" action="/media/{{.Media.ID}}/watch-next">
                     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
                     <button type="submit" class="btn btn-primary">{{call .T "media.mark_next"}}: {{.NextEpisode.Name}}</button>
+                </form>
+            </div>
+            {{end}}
+
+            {{/* One-click mark watched for movies */}}
+            {{if and (eq (print .Media.MediaType) "movie") (ne (print .Media.Status) "watched")}}
+            <div style="margin-top: var(--space-md);">
+                <form autocomplete="off" method="post" action="/media/{{.Media.ID}}/watch-movie">
+                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
+                    <button type="submit" class="btn btn-primary">{{call .T "media.mark_watched"}}</button>
                 </form>
             </div>
             {{end}}
@@ -163,7 +176,7 @@
         <form autocomplete="off" method="post" action="/media/{{.Media.ID}}/watched-at" class="form-actions">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" autocomplete="off">
             <label class="text-muted">Set date:</label>
-            <input type="date" name="watched_at" value="{{if .Media.WatchedAt}}{{.Media.WatchedAt.Format "2006-01-02"}}{{end}}" style="width: auto;" autocomplete="off">
+            <input type="date" name="watched_at" value="{{fmtDateInput .Media.WatchedAt}}" style="width: auto;" autocomplete="off">
             <button type="submit" class="btn">Save</button>
         </form>
         {{end}}
@@ -180,7 +193,7 @@
                 {{range .Seasons}}
                 {{$sn := .Season.SeasonNumber}}
                 {{range .Episodes}}
-                <option value="{{.ID}}">S{{$sn}}E{{.EpisodeNumber}} — {{trunc 40 .Name}}</option>
+                <option value="{{.ID}}">S{{$sn}}E{{.EpisodeNumber}} — {{.Name}}</option>
                 {{end}}
                 {{end}}
             </select>

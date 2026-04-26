@@ -92,4 +92,5 @@ type TMDBEpisodeRepository interface {
 	GetByTMDBID(ctx context.Context, tmdbEpisodeID int) (*TMDBEpisode, error)
 	ListBySeason(ctx context.Context, seasonID string) ([]TMDBEpisode, error)
 	ListByShow(ctx context.Context, showID string) ([]TMDBEpisode, error)
+	LatestAiredByShows(ctx context.Context, showIDs []string) (map[string]int64, error)
 }

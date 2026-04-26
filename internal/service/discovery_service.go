@@ -28,6 +28,14 @@ type DiscoveryServiceImpl struct {
 	mediaRecsCacheMu sync.Mutex
 }
 
+// detailTMDBTimeout caps how long the synchronous TMDB calls on the
+// media-detail page (watch providers, recommendations) are willing to
+// block the request handler before we degrade to "not available" and
+// keep rendering. TMDB occasionally throttles or stalls, and without a
+// per-call cap a slow upstream wedges the page until the reverse proxy
+// returns a 502.
+const detailTMDBTimeout = 5 * time.Second
+
 var _ model.DiscoveryService = (*DiscoveryServiceImpl)(nil)
 
 func NewDiscoveryService(tmdbClient *tmdb.Client, library model.LibraryRepository, dismissed model.DismissedRecommendationRepository) *DiscoveryServiceImpl {
@@ -232,18 +240,21 @@ func (s *DiscoveryServiceImpl) WatchProviders(ctx context.Context, libraryID, re
 		return nil, err
 	}
 
+	tmdbCtx, cancel := context.WithTimeout(ctx, detailTMDBTimeout)
+	defer cancel()
+
 	var providers *tmdb.WatchProviders
 	switch v.Entry.MediaType {
 	case model.MediaTypeMovie:
 		if v.Movie == nil {
 			return &model.WatchProviderResult{}, nil
 		}
-		providers, err = s.tmdb.GetMovieWatchProviders(ctx, v.Movie.TMDBID, region)
+		providers, err = s.tmdb.GetMovieWatchProviders(tmdbCtx, v.Movie.TMDBID, region)
 	case model.MediaTypeTV:
 		if v.Show == nil {
 			return &model.WatchProviderResult{}, nil
 		}
-		providers, err = s.tmdb.GetTVWatchProviders(ctx, v.Show.TMDBID, region)
+		providers, err = s.tmdb.GetTVWatchProviders(tmdbCtx, v.Show.TMDBID, region)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("fetching watch providers: %w", err)
@@ -277,18 +288,21 @@ func (s *DiscoveryServiceImpl) MediaRecommendations(ctx context.Context, library
 		return nil, err
 	}
 
+	tmdbCtx, cancel := context.WithTimeout(ctx, detailTMDBTimeout)
+	defer cancel()
+
 	var recs *tmdb.RecommendationResponse
 	switch v.Entry.MediaType {
 	case model.MediaTypeMovie:
 		if v.Movie == nil {
 			return nil, nil
 		}
-		recs, err = s.tmdb.GetMovieRecommendations(ctx, v.Movie.TMDBID)
+		recs, err = s.tmdb.GetMovieRecommendations(tmdbCtx, v.Movie.TMDBID)
 	case model.MediaTypeTV:
 		if v.Show == nil {
 			return nil, nil
 		}
-		recs, err = s.tmdb.GetTVRecommendations(ctx, v.Show.TMDBID)
+		recs, err = s.tmdb.GetTVRecommendations(tmdbCtx, v.Show.TMDBID)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("fetching recommendations: %w", err)

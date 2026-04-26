@@ -284,6 +284,7 @@ func main() {
 			r.Post("/media/{id}/tags/add", pageHandler.HandleAddTag)
 			r.Post("/media/{id}/tags/{tagId}/remove", pageHandler.HandleRemoveTag)
 			r.Post("/media/{id}/watch-next", pageHandler.HandleWatchNext)
+			r.Post("/media/{id}/watch-movie", pageHandler.HandleWatchMovie)
 			r.Post("/media/{id}/watched-at", pageHandler.HandleWatchedAt)
 			r.Post("/media/{id}/watch-up-to-date", pageHandler.HandleWatchUpToDate)
 			r.Post("/media/{id}/notes", pageHandler.HandleNotes)
@@ -328,6 +329,7 @@ func main() {
 			r.Post("/admin/delete", pageHandler.HandleDeleteUser)
 			r.Post("/admin/tmdb-jobs/retry", pageHandler.HandleTMDBJobRetry)
 			r.Post("/admin/tmdb-jobs/delete", pageHandler.HandleTMDBJobDelete)
+			r.Post("/admin/recalc-statuses", pageHandler.HandleRecalcStatuses)
 
 			r.Get("/tags", pageHandler.TagsPage)
 			r.Get("/tags/new-page", pageHandler.TagNewPage)

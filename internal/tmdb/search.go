@@ -31,12 +31,16 @@ func (c *Client) SearchMulti(ctx context.Context, query string, page int) (*Sear
 	return &result, nil
 }
 
-// SearchMovies searches TMDB for movies matching the query.
-// Endpoint: GET /search/movie?query={q}&page={page}
-func (c *Client) SearchMovies(ctx context.Context, query string, page int) (*SearchResponse, error) {
+// SearchMovies searches TMDB for movies matching the query. year=0 means
+// no year filter; otherwise narrows to that primary release year.
+// Endpoint: GET /search/movie?query={q}&page={page}&primary_release_year={year}
+func (c *Client) SearchMovies(ctx context.Context, query string, page, year int) (*SearchResponse, error) {
 	params := url.Values{}
 	params.Set("query", query)
 	params.Set("page", fmt.Sprintf("%d", page))
+	if year > 0 {
+		params.Set("primary_release_year", fmt.Sprintf("%d", year))
+	}
 
 	var result SearchResponse
 	if err := c.get(ctx, "/search/movie", params, &result); err != nil {
@@ -50,12 +54,16 @@ func (c *Client) SearchMovies(ctx context.Context, query string, page int) (*Sea
 	return &result, nil
 }
 
-// SearchTV searches TMDB for TV shows matching the query.
-// Endpoint: GET /search/tv?query={q}&page={page}
-func (c *Client) SearchTV(ctx context.Context, query string, page int) (*SearchResponse, error) {
+// SearchTV searches TMDB for TV shows matching the query. year=0 means no
+// year filter; otherwise narrows to that first-air-date year.
+// Endpoint: GET /search/tv?query={q}&page={page}&first_air_date_year={year}
+func (c *Client) SearchTV(ctx context.Context, query string, page, year int) (*SearchResponse, error) {
 	params := url.Values{}
 	params.Set("query", query)
 	params.Set("page", fmt.Sprintf("%d", page))
+	if year > 0 {
+		params.Set("first_air_date_year", fmt.Sprintf("%d", year))
+	}
 
 	var result SearchResponse
 	if err := c.get(ctx, "/search/tv", params, &result); err != nil {
